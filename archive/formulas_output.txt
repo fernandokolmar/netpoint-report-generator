@@ -1,0 +1,31 @@
+=== ACESSOS - Linha 1307 ===
+A1307: '=SUBTOTAL(103,Relatório_de_acesso12[Nome])'
+B1307: None
+C1307: None
+D1307: None
+E1307: None
+F1307: None
+G1307: None
+H1307: '=SUBTOTAL(101,Relatório_de_acesso12[Retenção (hh:mm)])'
+
+=== INSCRITOS - Linha 1632 ===
+A1632: 'Total'
+G1632: '=SUBTOTAL(103,inscritos[Data de Cadastro])'
+
+=== MENSAGENS - Linha 608 ===
+A608: 'Total'
+J608: '=SUBTOTAL(103,mensagens[Data])'
+
+=== RESUMO (Retenção na live) ===
+Q2: 'Quantidade de Inscritos'
+R2: '=inscritos[[#Totals],[Data de Cadastro]]'
+Q3: 'Usuários distintos na live'
+R3: '=Relatório_de_acesso12[[#Totals],[Nome]]'
+Q4: 'Pico de audiência'
+R4: '=MAX(retenção[Usuários conectados])'
+Q5: 'Hora de pico'
+R5: '=_xlfn.XLOOKUP(R4,retenção[Usuários conectados],retenção[Data],"-",0,1)'
+Q6: 'Tempo médio assitido (hh:mm)'
+R6: '=Relatório_de_acesso12[[#Totals],[Retenção (hh:mm)]]'
+Q7: 'Total mensagens enviadas'
+R7: '=mensagens[[#Totals],[Data]]'
