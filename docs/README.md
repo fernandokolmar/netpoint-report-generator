@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.0.0
+# Netpoint Report Generator v1.1.0
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -7,14 +7,21 @@ Aplicação para processar dados de videoconferência e gerar relatórios profis
 ## Funcionalidades
 
 ### Processamento de Dados
-- Importa 4 arquivos CSV de videoconferência:
+- Importa até 5 arquivos CSV de videoconferência:
   - **Inscritos** - Lista de participantes inscritos
-  - **Mensagens** - Chat/mensagens da sessão
+  - **Mensagens** (opcional) - Mensagens da sessão
+  - **Chat** (opcional) - Chat da sessão
   - **Relatório de Acesso** - Logs de entrada/saída
   - **Totalizado** - Dados agregados por minuto
 
+### Detecção Automática de Formato
+- Suporta diferentes estruturas de CSV de diferentes eventos
+- Detecta automaticamente se coluna "Login" contém Email ou Celular
+- Remove colunas completamente vazias
+- Adapta-se a diferentes formatos de relatório
+
 ### Relatório Excel Gerado
-O arquivo Excel gerado contém 4 planilhas:
+O arquivo Excel gerado contém até 5 planilhas:
 
 #### 1. Retenção na Live
 - **Tabela de dados**: Horário, Usuários conectados, Max (pico)
@@ -22,6 +29,9 @@ O arquivo Excel gerado contém 4 planilhas:
   - Linha azul sólida (#4472C4)
   - Eixo X: Horários (HH:MM) espaçados a cada 10 minutos
   - Eixo Y: Quantidade de usuários
+  - Linhas de grade verticais em cinza claro
+  - Marcador vermelho no ponto de pico máximo
+  - Rótulo mostrando horário e valor do pico
   - Sem legenda lateral
 - **Tabela de resumo estatístico**:
   - Quantidade de Inscritos
@@ -29,22 +39,29 @@ O arquivo Excel gerado contém 4 planilhas:
   - Pico de audiência
   - Hora de pico
   - Tempo médio assistido (hh:mm)
-  - Total de mensagens enviadas
+  - Total de mensagens enviadas (se houver)
+  - Total de mensagens no chat (se houver)
 
-#### 2. Mensagens
-- Tabela com todas as mensagens do chat
+#### 2. Mensagens (opcional)
+- Tabela com todas as mensagens
 - Formatação automática de colunas
 - Total de mensagens
 
-#### 3. Acessos
+#### 3. Chat (opcional)
+- Tabela com mensagens do chat
+- Remove colunas desnecessárias (Cliente, Sala)
+- Total de mensagens
+
+#### 4. Acessos
 - Relatório detalhado de acesso por usuário
 - Nome, horários de entrada/saída, tempo de permanência
 - Tempo total e médio calculados
 
-#### 4. Inscritos
+#### 5. Inscritos
 - Lista completa de inscritos
 - Data de cadastro, informações de contato
 - Contagem total
+- Remove colunas irrelevantes (MeuId, UTM, Grupo)
 
 ### Interface Gráfica
 - Seleção de arquivos com diálogo
@@ -132,6 +149,19 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.1.0 (2025-02-04)
+- Suporte a múltiplos formatos de CSV (diferentes eventos)
+- Detecção automática de Email vs Celular na coluna Login
+- Remoção automática de colunas vazias
+- Arquivo Chat agora é opcional (separado de Mensagens)
+- Gráfico de retenção melhorado:
+  - Marcador vermelho no ponto de pico máximo
+  - Rótulo com horário e valor do pico
+  - Linhas de grade verticais em cinza claro
+- Campos limpos automaticamente após gerar relatório
+- Removidas colunas irrelevantes (MeuId, UTM, Grupo)
+- Build automático para macOS via GitHub Actions
+
 ### v1.0.0 (2025-02-03)
 - Renomeado para "Netpoint Report Generator"
 - Adicionado ícone personalizado da Netpoint
@@ -147,6 +177,15 @@ App Estatisticas/
 
 ---
 
+## Plataformas Suportadas
+
+| Plataforma | Formato | Disponível |
+|------------|---------|------------|
+| Windows    | .exe    | ✅ |
+| macOS      | .dmg    | ✅ (via GitHub Actions) |
+
+---
+
 ## Suporte
 
 Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
@@ -154,5 +193,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.0.0
-**Última atualização**: 03/02/2025
+**Versão**: 1.1.0
+**Última atualização**: 04/02/2025

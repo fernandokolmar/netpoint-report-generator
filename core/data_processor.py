@@ -125,9 +125,10 @@ class ReportDataProcessor:
         Processa DataFrame de inscritos.
 
         Operações:
-        - Renomeia 'Login' para 'Celular'
+        - Detecta se 'Login' é Email ou Celular
         - Renomeia coluna LGPD longa
         - Renomeia 'Comunidade.1' para 'Comunidade2'
+        - Remove colunas completamente vazias
         - Seleciona colunas relevantes
 
         Args:
@@ -136,11 +137,17 @@ class ReportDataProcessor:
         Returns:
             DataFrame processado com colunas selecionadas
         """
+        # Detectar e renomear Login para Email ou Celular
+        df = self._smart_rename_login(df)
+
         # Normalizar nomes de colunas
         df = DataFrameHelper.normalize_columns(
             df,
             column_mappings.COLUMN_RENAMES
         )
+
+        # Remover colunas completamente vazias
+        df = self._remove_empty_columns(df)
 
         # Selecionar colunas disponíveis
         selected_cols = DataFrameHelper.select_available_columns(
@@ -161,10 +168,11 @@ class ReportDataProcessor:
         Processa DataFrame de relatório de acesso com validação avançada.
 
         Operações:
-        - Renomeia 'Login' para 'Celular'
+        - Detecta se 'Login' é Email ou Celular
         - Renomeia coluna LGPD longa
         - Renomeia 'Comunidade.1' para 'Comunidade_1'
         - Calcula tempo de retenção (hh:mm:ss)
+        - Remove colunas completamente vazias
         - Valida dados antes do processamento
         - Seleciona colunas relevantes
 
@@ -181,6 +189,9 @@ class ReportDataProcessor:
         Raises:
             DataProcessingError: Se dados estiverem em formato inválido
         """
+        # Detectar e renomear Login para Email ou Celular
+        df = self._smart_rename_login(df)
+
         # Normalizar nomes de colunas
         renames = column_mappings.COLUMN_RENAMES.copy()
         # Para relatório de acesso, Comunidade.1 vira Comunidade_1 (não Comunidade2)
@@ -229,6 +240,9 @@ class ReportDataProcessor:
         if settings.COL_RETENCAO in df.columns:
             df['Tempo_Minutos'] = self._convert_time_to_minutes(df[settings.COL_RETENCAO])
             self._log("✓ Coluna 'Tempo_Minutos' calculada para média no Excel")
+
+        # Remover colunas completamente vazias
+        df = self._remove_empty_columns(df)
 
         # Selecionar colunas disponíveis
         selected_cols = DataFrameHelper.select_available_columns(
@@ -492,3 +506,76 @@ class ReportDataProcessor:
                 return 0.0
 
         return time_str_series.apply(parse_time)
+
+    def _smart_rename_login(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Detecta automaticamente se a coluna 'Login' contém Email ou Celular.
+
+        Se a maioria dos valores contém '@', renomeia para 'Email'.
+        Caso contrário, renomeia para 'Celular'.
+
+        Args:
+            df: DataFrame com possível coluna 'Login'
+
+        Returns:
+            DataFrame com coluna renomeada apropriadamente
+        """
+        if 'Login' not in df.columns:
+            return df
+
+        # Verificar se maioria contém '@' (indica email)
+        login_values = df['Login'].dropna().astype(str)
+        if len(login_values) == 0:
+            return df
+
+        email_count = login_values.str.contains('@', na=False).sum()
+        email_ratio = email_count / len(login_values)
+
+        if email_ratio > 0.5:
+            # Maioria é email
+            df = df.rename(columns={'Login': 'Email'})
+            self._log("✓ Coluna 'Login' detectada como Email")
+        else:
+            # Maioria é celular/telefone
+            df = df.rename(columns={'Login': 'Celular'})
+            self._log("✓ Coluna 'Login' detectada como Celular")
+
+        return df
+
+    def _remove_empty_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove colunas que estão completamente vazias em todos os registros.
+
+        Uma coluna é considerada vazia se todos os valores são:
+        - None/NaN
+        - String vazia ''
+        - String com apenas espaços
+
+        Args:
+            df: DataFrame a processar
+
+        Returns:
+            DataFrame sem colunas completamente vazias
+        """
+        columns_to_remove = []
+
+        for col in df.columns:
+            # Verificar se coluna está completamente vazia
+            col_values = df[col].dropna()
+
+            # Se não há valores não-nulos, coluna está vazia
+            if len(col_values) == 0:
+                columns_to_remove.append(col)
+                continue
+
+            # Verificar se todos os valores são strings vazias
+            if col_values.dtype == object:
+                non_empty = col_values.astype(str).str.strip().str.len() > 0
+                if not non_empty.any():
+                    columns_to_remove.append(col)
+
+        if columns_to_remove:
+            self._log(f"✓ Removidas {len(columns_to_remove)} colunas vazias: {', '.join(columns_to_remove[:5])}{'...' if len(columns_to_remove) > 5 else ''}")
+            df = df.drop(columns=columns_to_remove)
+
+        return df

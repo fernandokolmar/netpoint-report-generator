@@ -11,6 +11,9 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.marker import Marker
+from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.axis import ChartLines
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.styles import Font, Alignment
 from openpyxl.chart.shapes import GraphicalProperties
@@ -293,6 +296,15 @@ class ExcelGenerator:
         # Última linha de dados
         last_data_row = len(df) + 1
 
+        # Encontrar o índice do PRIMEIRO valor máximo (evitar duplicações)
+        max_value = 0
+        max_row_index = 0
+        for i, (idx, row) in enumerate(df.iterrows()):
+            usuarios = row[settings.COL_USUARIOS_CONECTADOS]
+            if usuarios is not None and usuarios > max_value:
+                max_value = usuarios
+                max_row_index = i
+
         # Criar tabela SEM linha de totais (apenas dados) - agora apenas 3 colunas
         tab_ref = f"A1:C{last_data_row}"
         self._create_table(
@@ -301,15 +313,15 @@ class ExcelGenerator:
             ref=tab_ref
         )
 
-        # Adicionar fórmulas estruturadas (tabela já existe)
+        # Adicionar valor Max apenas na linha do primeiro máximo
         for i in range(len(df)):
             row_num = i + 2
-            # Fórmula estruturada: mostra valor somente se for o máximo, senão N/A
-            ws[f'C{row_num}'] = (
-                f'=IF({settings.TABLE_RETENCAO}[[#This Row],[Usuários conectados]]='
-                f'MAX({settings.TABLE_RETENCAO}[Usuários conectados]),'
-                f'{settings.TABLE_RETENCAO}[[#This Row],[Usuários conectados]],NA())'
-            )
+            if i == max_row_index:
+                # Apenas o primeiro máximo recebe o valor
+                ws[f'C{row_num}'] = max_value
+            else:
+                # Demais células ficam com N/A (para não aparecer no gráfico)
+                ws[f'C{row_num}'] = '=NA()'
 
         # Linha de totais FORA da tabela (como células normais)
         total_row = last_data_row + 1
@@ -448,6 +460,7 @@ class ExcelGenerator:
         - Título descritivo
         - Cor azul sólido (similar ao estilo da tabela TableStyleMedium12)
         - Eixos formatados
+        - Marcador vermelho no ponto de pico com rótulo
 
         Args:
             ws: Worksheet onde criar o gráfico
@@ -472,6 +485,12 @@ class ExcelGenerator:
         chart.x_axis.tickMarkSkip = 10
         chart.x_axis.delete = False  # Garantir que o eixo X não seja deletado
 
+        # Adicionar linhas de grade verticais (major gridlines) em cinza claro
+        chart.x_axis.majorGridlines = ChartLines()
+        chart.x_axis.majorGridlines.spPr = GraphicalProperties()
+        chart.x_axis.majorGridlines.spPr.ln.solidFill = "D9D9D9"  # Cinza claro
+        chart.x_axis.majorGridlines.spPr.ln.w = 9525  # Linha fina (0.75pt)
+
         # Dados para o gráfico - apenas valores numéricos (sem cabeçalho)
         # Coluna B = Usuários conectados (dados principais)
         data = Reference(ws, min_col=2, min_row=2, max_row=data_rows + 1)
@@ -486,6 +505,15 @@ class ExcelGenerator:
         # Deletar legenda (não é necessária pois só temos uma série)
         chart.legend = None
 
+        # Encontrar índice do valor máximo para o marcador
+        max_value = 0
+        max_index = 0
+        for i in range(data_rows):
+            cell_value = ws.cell(row=i + 2, column=2).value
+            if cell_value is not None and cell_value > max_value:
+                max_value = cell_value
+                max_index = i
+
         # Configurar a série para ter linha suave e cor azul sólido
         if chart.series:
             series = chart.series[0]
@@ -493,6 +521,36 @@ class ExcelGenerator:
             # Aplicar cor azul sólido (similar ao TableStyleMedium12)
             series.graphicalProperties.line.solidFill = "4472C4"  # Azul Excel padrão
             series.graphicalProperties.line.width = 25000  # largura em EMUs (2.5pt)
+
+            # Configurar marcadores - nenhum por padrão
+            series.marker = Marker(symbol='none')
+
+            # Habilitar rótulos de dados apenas para o ponto máximo
+            series.labels = DataLabelList()
+            series.labels.showVal = False  # Não mostrar valores por padrão
+            series.labels.showCatName = False
+            series.labels.showSerName = False
+
+        # Criar segunda série apenas com o ponto máximo (para destaque vermelho)
+        # Isso é feito usando a coluna C (Max) que só tem valor no ponto máximo
+        max_data = Reference(ws, min_col=3, min_row=2, max_row=data_rows + 1)
+        chart.add_data(max_data, titles_from_data=False)
+
+        if len(chart.series) > 1:
+            max_series = chart.series[1]
+            # Sem linha, apenas marcador
+            max_series.graphicalProperties.line.noFill = True
+            # Marcador vermelho circular
+            max_series.marker = Marker(symbol='circle', size=10)
+            max_series.marker.graphicalProperties.solidFill = "FF0000"  # Vermelho
+            max_series.marker.graphicalProperties.line.solidFill = "FF0000"
+
+            # Mostrar rótulo de dados no ponto máximo
+            max_series.labels = DataLabelList()
+            max_series.labels.showVal = True
+            max_series.labels.showCatName = True  # Mostrar horário
+            max_series.labels.showSerName = False
+            max_series.labels.separator = "\n"  # Quebra de linha entre horário e valor
 
         # Posicionar e dimensionar gráfico (tamanho grande)
         chart.width = 20  # largura em cm
