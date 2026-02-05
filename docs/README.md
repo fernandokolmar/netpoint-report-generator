@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.1.0
+# Netpoint Report Generator v1.2.0
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -19,6 +19,7 @@ Aplicação para processar dados de videoconferência e gerar relatórios profis
 - Detecta automaticamente se coluna "Login" contém Email ou Celular
 - Remove colunas completamente vazias
 - Adapta-se a diferentes formatos de relatório
+- **Suporte a Minnit Chat**: Detecta e converte automaticamente arquivos de chat do Minnit
 
 ### Relatório Excel Gerado
 O arquivo Excel gerado contém até 5 planilhas:
@@ -51,6 +52,7 @@ O arquivo Excel gerado contém até 5 planilhas:
 - Tabela com mensagens do chat
 - Remove colunas desnecessárias (Cliente, Sala)
 - Total de mensagens
+- **Suporta formato Minnit**: Converte automaticamente timestamp Unix para data/hora legível
 
 #### 4. Acessos
 - Relatório detalhado de acesso por usuário
@@ -149,6 +151,14 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.2.0 (2025-02-05)
+- **Suporte a Minnit Chat**: Detecta e processa automaticamente arquivos de chat do Minnit
+  - Converte timestamp Unix para formato DD/MM/YYYY HH:MM:SS
+  - Extrai Nome (nickname) e Mensagem (message)
+  - Detecção automática de separador (vírgula ou ponto-e-vírgula)
+- Gráfico de retenção com títulos de eixo posicionados dentro da área de plotagem
+- Melhorias na detecção automática de formato CSV
+
 ### v1.1.0 (2025-02-04)
 - Suporte a múltiplos formatos de CSV (diferentes eventos)
 - Detecção automática de Email vs Celular na coluna Login
@@ -193,5 +203,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.1.0
-**Última atualização**: 04/02/2025
+**Versão**: 1.2.0
+**Última atualização**: 05/02/2025

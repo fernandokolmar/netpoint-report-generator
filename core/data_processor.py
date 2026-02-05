@@ -303,10 +303,13 @@ class ReportDataProcessor:
         """
         Processa DataFrame de chat.
 
-        O chat tem estrutura diferente do arquivo de mensagens:
-        - Cliente, Sala, Nome, Mensagem, DataFormatada
+        Suporta dois formatos:
+        1. Formato padrão Netpoint: Cliente, Sala, Nome, Mensagem, DataFormatada
+        2. Formato Minnit: timestamp, username, nickname, message
 
         Operações:
+        - Detecta formato automaticamente
+        - Converte Minnit para formato padrão se necessário
         - Mantém apenas colunas relevantes (remove Cliente, Sala)
 
         Args:
@@ -315,15 +318,87 @@ class ReportDataProcessor:
         Returns:
             DataFrame processado
         """
-        # O chat geralmente já vem no formato correto
-        # Apenas normalizar nomes de colunas se necessário
-        df = DataFrameHelper.normalize_columns(
-            df,
-            column_mappings.COLUMN_RENAMES
-        )
+        # Detectar se é formato Minnit
+        if self._is_minnit_format(df):
+            self._log("✓ Convertendo formato Minnit para formato padrão...")
+            df = self._convert_minnit_to_standard(df)
+        else:
+            # Formato padrão - apenas normalizar nomes de colunas
+            df = DataFrameHelper.normalize_columns(
+                df,
+                column_mappings.COLUMN_RENAMES
+            )
 
-        # Retornar DataFrame como está (filtro de colunas será feito no Excel)
+        # Retornar DataFrame (filtro de colunas será feito no Excel)
         return df
+
+    def _is_minnit_format(self, df: pd.DataFrame) -> bool:
+        """
+        Verifica se o DataFrame é do formato Minnit Chat.
+
+        Args:
+            df: DataFrame a verificar
+
+        Returns:
+            True se for formato Minnit
+        """
+        df_columns = [col.lower() for col in df.columns]
+        minnit_required = ['timestamp', 'username', 'nickname', 'message']
+        return all(col in df_columns for col in minnit_required)
+
+    def _convert_minnit_to_standard(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Converte DataFrame do formato Minnit para formato padrão de chat.
+
+        Formato Minnit:
+        - timestamp: Unix timestamp (segundos desde 1970)
+        - username: ID do usuário (ex: guest13528733)
+        - nickname: Nome exibido
+        - recipient_username: Destinatário (vazio = mensagem pública)
+        - recipient_nickname: Nome do destinatário
+        - message: Conteúdo da mensagem
+
+        Formato padrão (saída):
+        - Nome: nickname
+        - Mensagem: message
+        - DataFormatada: timestamp convertido para DD/MM/YYYY HH:MM:SS
+
+        Args:
+            df: DataFrame no formato Minnit
+
+        Returns:
+            DataFrame no formato padrão
+        """
+        from datetime import datetime
+
+        # Criar novo DataFrame com colunas padrão
+        result = pd.DataFrame()
+
+        # Mapear colunas (case-insensitive)
+        col_map = {col.lower(): col for col in df.columns}
+
+        # Nome = nickname
+        if 'nickname' in col_map:
+            result['Nome'] = df[col_map['nickname']]
+
+        # Mensagem = message
+        if 'message' in col_map:
+            result['Mensagem'] = df[col_map['message']]
+
+        # DataFormatada = timestamp convertido
+        if 'timestamp' in col_map:
+            def convert_timestamp(ts):
+                try:
+                    # Unix timestamp para datetime
+                    dt = datetime.fromtimestamp(int(ts))
+                    return dt.strftime('%d/%m/%Y %H:%M:%S')
+                except (ValueError, TypeError, OSError):
+                    return ''
+
+            result['DataFormatada'] = df[col_map['timestamp']].apply(convert_timestamp)
+
+        self._log(f"✓ {len(result)} mensagens convertidas do formato Minnit")
+        return result
 
     def _process_totalizado(self, df: pd.DataFrame) -> pd.DataFrame:
         """

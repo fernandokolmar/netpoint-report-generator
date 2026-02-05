@@ -2,12 +2,17 @@
 Módulo responsável por carregar arquivos CSV.
 """
 
-from typing import Dict, Optional, Callable, List
+from typing import Dict, Optional, Callable, List, Tuple
 import pandas as pd
 import os
+from datetime import datetime
 from config.settings import CSV_ENCODING, CSV_SEPARATOR, MAX_FILE_SIZE_MB
 from config.column_mappings import REQUIRED_COLUMNS
 from core.exceptions import DataLoadError, EmptyDataFrameError, MissingColumnsError
+
+
+# Colunas que identificam o formato Minnit Chat
+MINNIT_COLUMNS = ['timestamp', 'username', 'nickname', 'message']
 
 
 class CSVLoader:
@@ -75,9 +80,9 @@ class CSVLoader:
         # Validar tamanho do arquivo
         self._validate_file_size(file_path)
 
-        # Carregar CSV
+        # Carregar CSV - tentar detectar separador automaticamente
         try:
-            df = pd.read_csv(file_path, encoding=encoding, sep=sep)
+            df = self._load_with_auto_separator(file_path, encoding, sep)
             return df
 
         except UnicodeDecodeError as e:
@@ -279,3 +284,68 @@ class CSVLoader:
         """
         if self.progress_callback:
             self.progress_callback(message)
+
+    def _load_with_auto_separator(
+        self,
+        file_path: str,
+        encoding: str,
+        default_sep: str
+    ) -> pd.DataFrame:
+        """
+        Carrega CSV detectando automaticamente o separador.
+
+        Tenta primeiro com o separador padrão (;), depois com vírgula (,).
+        Isso permite suportar arquivos Minnit que usam vírgula.
+
+        Args:
+            file_path: Caminho do arquivo
+            encoding: Encoding do arquivo
+            default_sep: Separador padrão a tentar primeiro
+
+        Returns:
+            DataFrame carregado
+        """
+        # Tentar com separador padrão primeiro
+        try:
+            df = pd.read_csv(file_path, encoding=encoding, sep=default_sep)
+            # Se tem apenas 1 coluna, provavelmente o separador está errado
+            if len(df.columns) > 1:
+                return df
+        except Exception:
+            pass
+
+        # Tentar com vírgula (formato Minnit usa vírgula)
+        try:
+            df = pd.read_csv(file_path, encoding=encoding, sep=',')
+            if len(df.columns) > 1:
+                # Verificar se é formato Minnit
+                if self._is_minnit_format(df):
+                    self._notify("✓ Formato Minnit Chat detectado")
+                return df
+        except Exception:
+            pass
+
+        # Última tentativa com separador padrão (para mostrar erro original)
+        return pd.read_csv(file_path, encoding=encoding, sep=default_sep)
+
+    def _is_minnit_format(self, df: pd.DataFrame) -> bool:
+        """
+        Verifica se o DataFrame é do formato Minnit Chat.
+
+        O formato Minnit tem as colunas:
+        - timestamp (Unix timestamp)
+        - username
+        - nickname
+        - recipient_username (opcional)
+        - recipient_nickname (opcional)
+        - message
+
+        Args:
+            df: DataFrame a verificar
+
+        Returns:
+            True se for formato Minnit
+        """
+        df_columns = [col.lower() for col in df.columns]
+        minnit_required = ['timestamp', 'username', 'nickname', 'message']
+        return all(col in df_columns for col in minnit_required)

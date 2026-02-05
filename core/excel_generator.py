@@ -14,6 +14,16 @@ from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.marker import Marker
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.axis import ChartLines
+from openpyxl.chart.layout import Layout, ManualLayout
+from openpyxl.chart.text import RichText
+from openpyxl.chart.title import Title
+from openpyxl.drawing.text import (
+    RichTextProperties,
+    Paragraph,
+    ParagraphProperties,
+    CharacterProperties,
+    RegularTextRun
+)
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.styles import Font, Alignment
 from openpyxl.chart.shapes import GraphicalProperties
@@ -476,10 +486,62 @@ class ExcelGenerator:
         chart.style = 13
 
         # Configurar eixo Y (Quantidade de usuários)
-        chart.y_axis.title = "Usuários"
+        chart.y_axis.delete = False  # Garantir que o eixo Y seja exibido
+        chart.y_axis.tickLblPos = "nextTo"  # Labels ao lado do eixo
+        chart.y_axis.numFmt = "#,##0"  # Formato numérico (sem decimais, com separador de milhar)
+
+        # Título do eixo Y - definir texto primeiro, depois customizar
+        chart.y_axis.title = "Qtd. Usuários"
+
+        # Customizar o título Y para texto horizontal e posição dentro da área de plotagem
+        y_title = chart.y_axis.title
+        y_title.overlay = True  # Permite sobrepor a área de plotagem
+        y_title.txPr = RichText(
+            bodyPr=RichTextProperties(
+                vert='horz',  # Texto horizontal (não vertical/rotacionado)
+                anchor='ctr',
+            ),
+            p=[Paragraph(
+                pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1000, b=True)),
+                endParaRPr=CharacterProperties(sz=1000, b=True)
+            )]
+        )
+        # Posicionar título Y centralizado verticalmente, próximo à borda esquerda interna
+        y_title.layout = Layout(
+            manualLayout=ManualLayout(
+                xMode="edge",
+                yMode="edge",
+                x=0.06,   # 6% da esquerda (próximo à borda interna esquerda)
+                y=0.42,   # 42% do topo (um pouco mais para o meio do eixo)
+            )
+        )
 
         # Configurar eixo X (Horário) com labels espaçados
+        # Título do eixo X - definir texto primeiro, depois customizar
         chart.x_axis.title = "Horário"
+
+        # Customizar o título X para posição dentro da área de plotagem
+        x_title = chart.x_axis.title
+        x_title.overlay = True  # Permite sobrepor a área de plotagem
+        x_title.txPr = RichText(
+            bodyPr=RichTextProperties(
+                vert='horz',  # Texto horizontal
+                anchor='ctr',
+            ),
+            p=[Paragraph(
+                pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1000, b=True)),
+                endParaRPr=CharacterProperties(sz=1000, b=True)
+            )]
+        )
+        # Posicionar título X centralizado horizontalmente, próximo à borda inferior interna
+        x_title.layout = Layout(
+            manualLayout=ManualLayout(
+                xMode="edge",
+                yMode="edge",
+                x=0.50,   # 50% da largura (centralizado horizontalmente)
+                y=0.82,   # 82% do topo (um pouco mais para cima)
+            )
+        )
         chart.x_axis.tickLblPos = "low"  # Labels embaixo do eixo
         chart.x_axis.tickLblSkip = 10  # Mostrar 1 label a cada 10
         chart.x_axis.tickMarkSkip = 10
