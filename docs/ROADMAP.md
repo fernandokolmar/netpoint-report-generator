@@ -1,12 +1,12 @@
 # Roadmap - Netpoint Report Generator
 
-## Versão Atual: v1.2.0
+## Versão Atual: v1.3.0
 
 ---
 
 ## Próximas Melhorias Planejadas
 
-### v1.3.0 - Suporte Multi-Evento
+### v1.4.0 - Suporte Multi-Evento
 - [ ] Aceitar múltiplos arquivos de Acessos (consolidar dados de vários eventos)
 - [ ] Aceitar múltiplos arquivos Totalizado (mesclar dados minuto a minuto)
 - [ ] Aceitar múltiplos arquivos de Inscritos (unificar listas)
@@ -37,6 +37,12 @@
 
 ## Histórico de Versões
 
+### v1.3.0 (2025-03-05)
+- ✅ Correção crítica de crash com colunas Login + Celular simultâneas
+- ✅ Coluna Login preservada como identificador de acesso (sem renomeação automática)
+- ✅ Filtro de usuários de sistema (Login='visitante' removido antes do processamento)
+- ✅ Robustez em colunas duplicadas (uso de iloc no _remove_empty_columns)
+
 ### v1.2.0 (2025-02-05)
 - ✅ Suporte a Minnit Chat
   - ✅ Detecção automática do formato Minnit
@@ -63,4 +69,4 @@
 
 ---
 
-*Última atualização: 05/02/2025*
+*Última atualização: 05/03/2025*

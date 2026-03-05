@@ -120,12 +120,38 @@ class ReportDataProcessor:
 
         return processed
 
+    def _remove_system_users(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove registros de sistema da plataforma (usuário 'visitante').
+
+        O registro de sistema tem Login = 'visitante' (case-insensitive).
+        Este registro existe em alguns eventos e não representa um participante real.
+        A remoção é feita antes de qualquer processamento, enquanto a coluna
+        ainda se chama 'Login'.
+
+        Args:
+            df: DataFrame bruto com possível coluna 'Login'
+
+        Returns:
+            DataFrame sem registros de sistema
+        """
+        if 'Login' not in df.columns:
+            return df
+
+        mask = df['Login'].astype(str).str.strip().str.lower() == 'visitante'
+        removed = mask.sum()
+        if removed > 0:
+            df = df[~mask].reset_index(drop=True)
+            self._log(f"✓ {removed} registro(s) de sistema removido(s) (Login='visitante')")
+
+        return df
+
     def _process_inscritos(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Processa DataFrame de inscritos.
 
         Operações:
-        - Detecta se 'Login' é Email ou Celular
+        - Remove registros de sistema (Login='visitante')
         - Renomeia coluna LGPD longa
         - Renomeia 'Comunidade.1' para 'Comunidade2'
         - Remove colunas completamente vazias
@@ -137,8 +163,8 @@ class ReportDataProcessor:
         Returns:
             DataFrame processado com colunas selecionadas
         """
-        # Detectar e renomear Login para Email ou Celular
-        df = self._smart_rename_login(df)
+        # Remover registros de sistema antes de qualquer processamento
+        df = self._remove_system_users(df)
 
         # Normalizar nomes de colunas
         df = DataFrameHelper.normalize_columns(
@@ -168,7 +194,6 @@ class ReportDataProcessor:
         Processa DataFrame de relatório de acesso com validação avançada.
 
         Operações:
-        - Detecta se 'Login' é Email ou Celular
         - Renomeia coluna LGPD longa
         - Renomeia 'Comunidade.1' para 'Comunidade_1'
         - Calcula tempo de retenção (hh:mm:ss)
@@ -189,8 +214,8 @@ class ReportDataProcessor:
         Raises:
             DataProcessingError: Se dados estiverem em formato inválido
         """
-        # Detectar e renomear Login para Email ou Celular
-        df = self._smart_rename_login(df)
+        # Remover registros de sistema antes de qualquer processamento
+        df = self._remove_system_users(df)
 
         # Normalizar nomes de colunas
         renames = column_mappings.COLUMN_RENAMES.copy()
@@ -634,23 +659,24 @@ class ReportDataProcessor:
         """
         columns_to_remove = []
 
-        for col in df.columns:
-            # Verificar se coluna está completamente vazia
-            col_values = df[col].dropna()
+        for i, col in enumerate(df.columns):
+            # Usar iloc para evitar ambiguidade com colunas de nome duplicado
+            col_series = df.iloc[:, i].dropna()
 
             # Se não há valores não-nulos, coluna está vazia
-            if len(col_values) == 0:
-                columns_to_remove.append(col)
+            if len(col_series) == 0:
+                columns_to_remove.append(i)
                 continue
 
             # Verificar se todos os valores são strings vazias
-            if col_values.dtype == object:
-                non_empty = col_values.astype(str).str.strip().str.len() > 0
+            if col_series.dtype == object:
+                non_empty = col_series.astype(str).str.strip().str.len() > 0
                 if not non_empty.any():
-                    columns_to_remove.append(col)
+                    columns_to_remove.append(i)
 
         if columns_to_remove:
-            self._log(f"✓ Removidas {len(columns_to_remove)} colunas vazias: {', '.join(columns_to_remove[:5])}{'...' if len(columns_to_remove) > 5 else ''}")
-            df = df.drop(columns=columns_to_remove)
+            col_names = [df.columns[i] for i in columns_to_remove]
+            self._log(f"✓ Removidas {len(columns_to_remove)} colunas vazias: {', '.join(str(n) for n in col_names[:5])}{'...' if len(columns_to_remove) > 5 else ''}")
+            df = df.drop(df.columns[columns_to_remove], axis=1)
 
         return df
