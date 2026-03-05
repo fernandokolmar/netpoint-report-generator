@@ -111,6 +111,16 @@ class ReportDataProcessor:
             self._log("⊘ Chat: não há dados para processar")
             processed['chat_processed'] = None
 
+        # Processar enquetes (opcionais, múltiplas)
+        enquete_keys = sorted([k for k in dfs if k.startswith('enquete_')])
+        for key in enquete_keys:
+            if dfs[key] is not None:
+                num = key.split('_')[1]
+                self._log(f"Processando enquete {num}...")
+                processed[f'{key}_processed'] = self._process_enquete(dfs[key].copy())
+            else:
+                processed[f'{key}_processed'] = None
+
         self._log("Processando totalizado...")
         processed['totalizado_processed'] = self._process_totalizado(
             dfs['totalizado'].copy()
@@ -424,6 +434,26 @@ class ReportDataProcessor:
 
         self._log(f"✓ {len(result)} mensagens convertidas do formato Minnit")
         return result
+
+    def _process_enquete(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Processa DataFrame de enquete.
+
+        Mantém apenas as colunas relevantes:
+        Nome, Login, Pergunta, Resposta, Data
+
+        Args:
+            df: DataFrame de enquete bruto
+
+        Returns:
+            DataFrame processado com colunas selecionadas
+        """
+        desired = ['Nome', 'Login', 'Pergunta', 'Resposta', 'Data']
+        available = [col for col in desired if col in df.columns]
+
+        if available:
+            return df[available]
+        return df
 
     def _process_totalizado(self, df: pd.DataFrame) -> pd.DataFrame:
         """

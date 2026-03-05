@@ -223,6 +223,10 @@ class ExcelGenerator:
         has_mensagens = 'mensagens_processed' in dfs and dfs['mensagens_processed'] is not None and len(dfs['mensagens_processed']) > 0
         has_chat = 'chat_processed' in dfs and dfs['chat_processed'] is not None and len(dfs['chat_processed']) > 0
 
+        # Coletar enquetes disponíveis (ordenadas)
+        enquete_keys = sorted([k for k in dfs if k.startswith('enquete_') and k.endswith('_processed')])
+        enquetes = [(k, dfs[k]) for k in enquete_keys if dfs[k] is not None and len(dfs[k]) > 0]
+
         # Criar workbook
         wb = Workbook()
 
@@ -252,6 +256,15 @@ class ExcelGenerator:
 
         self._log("Criando planilha Inscritos...")
         self._create_inscritos_sheet(wb, dfs['inscritos_processed'])
+
+        # Criar planilhas de enquete (se houver)
+        for i, (key, df_enquete) in enumerate(enquetes, start=1):
+            sheet_name = f"Enquete {i:02d}"
+            self._log(f"Criando planilha {sheet_name}...")
+            self._create_enquete_sheet(wb, df_enquete, sheet_name, i)
+
+        if not enquetes:
+            self._log("⊘ Nenhuma enquete para incluir no relatório")
 
         # Finalizar fórmulas cross-sheet (DEPOIS que todas as tabelas existem)
         self._log("Finalizando fórmulas da tabela Resumo...")
@@ -862,6 +875,59 @@ class ExcelGenerator:
 
         # Ajustar larguras das colunas
         self._auto_adjust_column_widths(ws, max_width=50)
+
+    def _create_enquete_sheet(
+        self,
+        wb: Workbook,
+        df: pd.DataFrame,
+        sheet_name: str,
+        enquete_num: int
+    ) -> None:
+        """
+        Cria planilha de enquete com tabela formatada.
+
+        Colunas esperadas: Nome, Login, Pergunta, Resposta, Data
+
+        Args:
+            wb: Workbook do openpyxl
+            df: DataFrame processado da enquete
+            sheet_name: Nome da aba (ex: "Enquete 01")
+            enquete_num: Número da enquete (para nome único da tabela)
+        """
+        ws = wb.create_sheet(sheet_name)
+
+        # Sanitizar nomes de colunas
+        raw_columns = df.columns.tolist()
+        sanitized = [self._sanitize_column_name(c) for c in raw_columns]
+        sanitized = self._ensure_unique_column_names(sanitized)
+        sanitized_map = dict(zip(raw_columns, sanitized))
+
+        # Cabeçalhos
+        for col_idx, col_name in enumerate(raw_columns):
+            ws.cell(row=1, column=col_idx + 1, value=sanitized_map[col_name])
+
+        # Dados
+        for row_idx, (_, row) in enumerate(df.iterrows()):
+            for col_idx, col_name in enumerate(raw_columns):
+                value = self._convert_cell_value(row[col_name])
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+
+        # Nome único da tabela por número de enquete
+        table_name = f"tblEnquete{enquete_num:02d}"
+        tab_ref = f"A1:{get_column_letter(len(raw_columns))}{last_data_row}"
+        self._create_table(ws, table_name=table_name, ref=tab_ref)
+
+        # Total fora da tabela
+        total_row = last_data_row + 1
+        ws[f'A{total_row}'] = "Total"
+        ws[f'A{total_row}'].font = Font(bold=True)
+        # Contar pela coluna Nome (sempre primeira)
+        ws[f'B{total_row}'] = f"=SUBTOTAL(103,{table_name}[{sanitized[1] if len(sanitized) > 1 else sanitized[0]}])"
+        ws[f'B{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=60)
 
     # Contador de IDs de tabela para garantir unicidade
     _table_id_counter = 0

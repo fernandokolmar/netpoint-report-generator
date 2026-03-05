@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.3.0
+# Netpoint Report Generator v1.4.0
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -7,12 +7,13 @@ Aplicação para processar dados de videoconferência e gerar relatórios profis
 ## Funcionalidades
 
 ### Processamento de Dados
-- Importa até 5 arquivos CSV de videoconferência:
+- Importa arquivos CSV de videoconferência:
   - **Inscritos** - Lista de participantes inscritos
   - **Mensagens** (opcional) - Mensagens da sessão
   - **Chat** (opcional) - Chat da sessão
   - **Relatório de Acesso** - Logs de entrada/saída
   - **Totalizado** - Dados agregados por minuto
+  - **Enquetes** (opcional, múltiplas) - Resultados de enquetes do evento
 
 ### Detecção Automática de Formato
 - Suporta diferentes estruturas de CSV de diferentes eventos
@@ -23,7 +24,7 @@ Aplicação para processar dados de videoconferência e gerar relatórios profis
 - **Filtro de usuários de sistema**: Remove automaticamente registros de sistema (ex: `Login='visitante'`)
 
 ### Relatório Excel Gerado
-O arquivo Excel gerado contém até 5 planilhas:
+O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
 
 #### 1. Retenção na Live
 - **Tabela de dados**: Horário, Usuários conectados, Max (pico)
@@ -62,6 +63,12 @@ O arquivo Excel gerado contém até 5 planilhas:
 
 #### 5. Inscritos
 - Lista completa de inscritos
+
+#### 6+. Enquetes (opcional, uma aba por enquete)
+- Gerada automaticamente para cada arquivo de enquete adicionado
+- Colunas: Nome, Login, Pergunta, Resposta, Data
+- Nomeadas sequencialmente: `Enquete 01`, `Enquete 02`, etc.
+- Total de respostas calculado automaticamente
 - Data de cadastro, informações de contato
 - Contagem total
 - Remove colunas irrelevantes (MeuId, UTM, Grupo)
@@ -72,6 +79,7 @@ O arquivo Excel gerado contém até 5 planilhas:
 - Barra de progresso durante processamento
 - Histórico de arquivos recentes (menu Arquivo > Recentes)
 - Log de status em tempo real
+- **Enquetes dinâmicas**: botão "+ Adicionar Enquete" para incluir múltiplos arquivos; botão "×" para remover
 
 ---
 
@@ -152,6 +160,14 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.4.0 (2025-03-05)
+- **Suporte a Enquetes**: Importação de múltiplos arquivos de enquete (opcional)
+  - Botão "+ Adicionar Enquete" na interface — adicione quantas precisar
+  - Botão "×" para remover enquetes adicionadas por engano
+  - Cada enquete gera uma aba separada no Excel (`Enquete 01`, `Enquete 02`, etc.)
+  - Colunas: Nome, Login, Pergunta, Resposta, Data
+  - Totalmente opcional — eventos sem enquete funcionam normalmente
+
 ### v1.3.0 (2025-03-05)
 - **Correção crítica de crash**: Arquivos com colunas `Login` e `Celular` simultâneas causavam `AttributeError` — corrigido
 - **Coluna `Login` preservada**: Não é mais renomeada automaticamente; `Login` é o identificador de acesso do usuário, independente do conteúdo
@@ -210,5 +226,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.3.0
+**Versão**: 1.4.0
 **Última atualização**: 05/03/2025

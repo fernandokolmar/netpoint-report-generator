@@ -1,6 +1,6 @@
 # Roadmap - Netpoint Report Generator
 
-## Versão Atual: v1.3.0
+## Versão Atual: v1.4.0
 
 ---
 
@@ -36,6 +36,13 @@
 ---
 
 ## Histórico de Versões
+
+### v1.4.0 (2025-03-05)
+- ✅ Suporte a múltiplas enquetes por evento
+  - ✅ Botão "+ Adicionar Enquete" na interface
+  - ✅ Botão "×" para remover enquetes
+  - ✅ Cada enquete gera aba separada no Excel
+  - ✅ Totalmente opcional (compatível com eventos sem enquete)
 
 ### v1.3.0 (2025-03-05)
 - ✅ Correção crítica de crash com colunas Login + Celular simultâneas

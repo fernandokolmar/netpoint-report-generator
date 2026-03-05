@@ -37,7 +37,7 @@ class VideoConferenceReportGenerator:
         self._set_app_icon()
 
         # Variáveis para armazenar caminhos dos arquivos
-        # Nota: 'mensagens' e 'chat' são opcionais
+        # Nota: 'mensagens', 'chat' e 'enquete_N' são opcionais
         self.file_paths: Dict[str, str] = {
             'inscritos': '',
             'mensagens': '',
@@ -45,6 +45,9 @@ class VideoConferenceReportGenerator:
             'relatorio_acesso': '',
             'totalizado': ''
         }
+
+        # Lista de enquetes dinâmicas: cada item é (enquete_key, entry_widget, row_frame)
+        self.enquete_rows = []
 
         # Controller (Dependency Injection)
         self.controller = ReportController(progress_callback=self.log)
@@ -137,22 +140,40 @@ class VideoConferenceReportGenerator:
                   command=lambda: self.load_file('totalizado', self.totalizado_entry)).grid(row=4, column=2, padx=5, pady=5)
         ttk.Button(files_frame, text="Preview",
                   command=lambda: self.show_file_preview('totalizado')).grid(row=4, column=3, padx=5, pady=5)
-        
+
+        # Separador e seção de Enquetes
+        ttk.Separator(files_frame, orient='horizontal').grid(
+            row=5, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=8
+        )
+
+        # Cabeçalho da seção de enquetes com botão "+"
+        enquetes_header = ttk.Frame(files_frame)
+        enquetes_header.grid(row=6, column=0, columnspan=4, sticky=(tk.W, tk.E), padx=5, pady=2)
+        ttk.Label(enquetes_header, text="Enquetes (opcional):", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+        ttk.Button(enquetes_header, text="+ Adicionar Enquete",
+                   command=self._add_enquete_row).pack(side=tk.LEFT, padx=10)
+
+        # Frame container para as linhas de enquete (crescimento dinâmico)
+        self.enquetes_container = ttk.Frame(files_frame)
+        self.enquetes_container.grid(row=7, column=0, columnspan=4, sticky=(tk.W, tk.E))
+        self.enquetes_container.columnconfigure(1, weight=1)
+
         # Status/Log
         log_frame = ttk.LabelFrame(main_frame, text="Status", padding="10")
         log_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
-        
+        main_frame.rowconfigure(2, weight=1)
+
         # Text widget para log
-        self.log_text = tk.Text(log_frame, height=10, width=70)
+        self.log_text = tk.Text(log_frame, height=8, width=70)
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
         # Scrollbar para o log
         scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.log_text.configure(yscrollcommand=scrollbar.set)
-        
+
         # Barra de progresso
         progress_frame = ttk.Frame(main_frame)
         progress_frame.grid(row=3, column=0, columnspan=3, pady=10)
@@ -184,6 +205,62 @@ class VideoConferenceReportGenerator:
 
         # Mensagem inicial
         self.log("Sistema pronto. Carregue os arquivos CSV para começar.")
+
+    def _add_enquete_row(self) -> None:
+        """Adiciona uma nova linha de enquete na interface."""
+        idx = len(self.enquete_rows) + 1
+        key = f'enquete_{idx}'
+
+        row_frame = ttk.Frame(self.enquetes_container)
+        row_frame.grid(row=idx - 1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2)
+        row_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(row_frame, text=f"Enquete {idx:02d}:").grid(row=0, column=0, sticky=tk.W, padx=5)
+
+        entry = ttk.Entry(row_frame, width=50)
+        entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+
+        ttk.Button(row_frame, text="Procurar",
+                   command=lambda k=key, e=entry: self.load_file(k, e)).grid(row=0, column=2, padx=5)
+
+        ttk.Button(row_frame, text="Preview",
+                   command=lambda k=key: self.show_file_preview(k)).grid(row=0, column=3, padx=5)
+
+        ttk.Button(row_frame, text="×",
+                   command=lambda k=key, f=row_frame: self._remove_enquete_row(k, f)).grid(row=0, column=4, padx=2)
+
+        self.enquete_rows.append((key, entry, row_frame))
+        self.file_paths[key] = ''
+
+        self.log(f"Enquete {idx:02d} adicionada. Selecione o arquivo CSV.")
+
+    def _remove_enquete_row(self, key: str, row_frame: ttk.Frame) -> None:
+        """Remove uma linha de enquete da interface e renumera as restantes."""
+        # Remover do dicionário de caminhos
+        self.file_paths.pop(key, None)
+
+        # Remover da lista de rows
+        self.enquete_rows = [(k, e, f) for k, e, f in self.enquete_rows if k != key]
+
+        # Destruir o frame
+        row_frame.destroy()
+
+        # Renumerar enquetes restantes (chaves e labels)
+        old_rows = self.enquete_rows[:]
+        self.enquete_rows = []
+        for new_idx, (old_key, entry, frame) in enumerate(old_rows, start=1):
+            new_key = f'enquete_{new_idx}'
+            # Atualizar path no dicionário
+            old_path = self.file_paths.pop(old_key, '')
+            self.file_paths[new_key] = old_path
+            self.enquete_rows.append((new_key, entry, frame))
+            # Atualizar label dentro do frame
+            for widget in frame.winfo_children():
+                if isinstance(widget, ttk.Label):
+                    widget.config(text=f"Enquete {new_idx:02d}:")
+                    break
+
+        self.log(f"Enquete removida. Total: {len(self.enquete_rows)} enquete(s).")
 
     def create_menu(self) -> None:
         """Cria barra de menu com opções de histórico."""
@@ -283,6 +360,17 @@ class VideoConferenceReportGenerator:
             self.totalizado_entry.delete(0, tk.END)
             self.totalizado_entry.insert(0, files['totalizado'])
 
+        # Restaurar enquetes do histórico
+        for key, path in files.items():
+            if key.startswith('enquete_') and path:
+                self._add_enquete_row()
+                if self.enquete_rows:
+                    _, entry, _ = self.enquete_rows[-1]
+                    entry.delete(0, tk.END)
+                    entry.insert(0, path)
+                    last_key = self.enquete_rows[-1][0]
+                    self.file_paths[last_key] = path
+
         self.log(f"✓ Conjunto '{name}' carregado do histórico")
 
     def _clear_history(self) -> None:
@@ -336,6 +424,12 @@ class VideoConferenceReportGenerator:
         self.chat_entry.delete(0, tk.END)
         self.relatorio_entry.delete(0, tk.END)
         self.totalizado_entry.delete(0, tk.END)
+
+        # Remover todas as linhas de enquete da UI
+        for _, _, frame in self.enquete_rows:
+            frame.destroy()
+        self.enquete_rows = []
+
         self.file_paths = {
             'inscritos': '',
             'mensagens': '',

@@ -316,6 +316,13 @@ class ReportController:
             'retencao': len(self.raw_dataframes.get('totalizado', []))
         }
 
+        # Contabilizar enquetes
+        enquete_keys = [k for k in self.raw_dataframes if k.startswith('enquete_')]
+        if enquete_keys:
+            stats['details']['enquetes'] = {
+                k: len(self.raw_dataframes[k]) for k in sorted(enquete_keys)
+            }
+
         return stats
 
     def _notify(self, message: str) -> None:
