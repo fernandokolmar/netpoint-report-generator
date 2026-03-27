@@ -4,7 +4,7 @@ Configurações gerais do Netpoint Report Generator.
 
 # Informações da aplicação
 APP_NAME = "Netpoint Report Generator"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
 APP_AUTHOR = "Netpoint"
 
 # Configurações CSV
@@ -41,6 +41,9 @@ COL_EMAIL = 'Email'
 COL_REMETENTE = 'Remetente'
 COL_SOU = 'Sou'
 COL_SOBRENOME = 'Sobrenome'
+COL_PERMANENCIA = 'Permanencia'
+COL_NUM_PESSOAS = 'NumPessoas'
+COL_TOTAL_ASSISTINDO = 'Total assistindo'
 
 # Nomes de tabelas Excel
 # IMPORTANTE: Nomes devem ser simples, sem números no início, sem caracteres especiais
@@ -48,6 +51,7 @@ TABLE_RETENCAO = 'tblRetencao'
 TABLE_MENSAGENS = 'tblMensagens'
 TABLE_CHAT = 'tblChat'
 TABLE_ACESSOS = 'tblAcessos'
+TABLE_PERMANENCIA = 'tblPermanencia'
 TABLE_INSCRITOS = 'tblInscritos'
 TABLE_RESUMO = 'tblResumo'
 

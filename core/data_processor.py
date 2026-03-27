@@ -185,19 +185,16 @@ class ReportDataProcessor:
         # Remover colunas completamente vazias
         df = self._remove_empty_columns(df)
 
-        # Selecionar colunas disponíveis
-        selected_cols = DataFrameHelper.select_available_columns(
-            df,
-            required=column_mappings.REQUIRED_COLUMNS['inscritos'],
-            optional=column_mappings.OPTIONAL_COLUMNS['inscritos']
+        # Ordenar colunas: conhecidas primeiro (na ordem definida), depois as demais
+        known_order = (
+            column_mappings.REQUIRED_COLUMNS['inscritos'] +
+            column_mappings.OPTIONAL_COLUMNS['inscritos']
         )
+        ordered_cols = [col for col in known_order if col in df.columns]
+        remaining_cols = [col for col in df.columns if col not in ordered_cols]
+        all_cols = ordered_cols + remaining_cols
 
-        # Retornar DataFrame com colunas selecionadas
-        if selected_cols:
-            return df[selected_cols]
-
-        # Se nenhuma coluna foi selecionada, retornar DataFrame original
-        return df
+        return df[all_cols]
 
     def _process_relatorio_acesso(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -234,20 +231,39 @@ class ReportDataProcessor:
 
         df = DataFrameHelper.normalize_columns(df, renames)
 
-        # Calcular tempo de retenção
-        if settings.COL_TEMPO in df.columns:
-            # Modo 1: Coluna Tempo já existe em minutos
-            # Validar que coluna Tempo contém valores numéricos
-            self._validate_numeric_column(df, settings.COL_TEMPO, 'relatorio_acesso')
+        # Detectar modo: novo formato (Permanencia) ou formato legado (Tempo / datas)
+        if settings.COL_PERMANENCIA in df.columns:
+            # Modo novo: coluna Permanencia já está em minutos
+            self._validate_numeric_column(df, settings.COL_PERMANENCIA, 'relatorio_acesso')
+            df['Tempo_Minutos'] = pd.to_numeric(df[settings.COL_PERMANENCIA], errors='coerce').fillna(0)
+            self._log("✓ Coluna 'Permanencia' detectada — usando minutos diretamente")
 
+            # Tratar coluna NumPessoas
+            if settings.COL_NUM_PESSOAS in df.columns:
+                self._validate_numeric_column(df, settings.COL_NUM_PESSOAS, 'relatorio_acesso')
+                num_pessoas = pd.to_numeric(df[settings.COL_NUM_PESSOAS], errors='coerce').fillna(0)
+                if (num_pessoas > 0).any():
+                    # Há pessoas extras — criar coluna Total assistindo
+                    df[settings.COL_NUM_PESSOAS] = num_pessoas
+                    df[settings.COL_TOTAL_ASSISTINDO] = num_pessoas + 1
+                    self._log(f"✓ Coluna '{settings.COL_NUM_PESSOAS}' com valores — '{settings.COL_TOTAL_ASSISTINDO}' calculada")
+                else:
+                    # Todos zeros — remover coluna
+                    df = df.drop(columns=[settings.COL_NUM_PESSOAS])
+                    self._log(f"✓ Coluna '{settings.COL_NUM_PESSOAS}' zerada — ocultada do relatório")
+
+        elif settings.COL_TEMPO in df.columns:
+            # Modo legado 1: Coluna Tempo em minutos → converter para hh:mm
+            self._validate_numeric_column(df, settings.COL_TEMPO, 'relatorio_acesso')
             df[settings.COL_RETENCAO] = df[settings.COL_TEMPO].apply(
                 TimeCalculator.format_minutes_to_time
             )
+            df['Tempo_Minutos'] = self._convert_time_to_minutes(df[settings.COL_RETENCAO])
+            self._log("✓ Coluna 'Tempo_Minutos' calculada para média no Excel")
 
         elif (settings.COL_DATA_INICIAL in df.columns and
               settings.COL_DATA_FINAL in df.columns):
-            # Modo 2: Calcular a partir de datas inicial e final
-            # Validar formato de datas
+            # Modo legado 2: Calcular a partir de datas inicial e final
             self._validate_date_column(df, settings.COL_DATA_INICIAL, 'relatorio_acesso')
             self._validate_date_column(df, settings.COL_DATA_FINAL, 'relatorio_acesso')
 
@@ -262,43 +278,36 @@ class ReportDataProcessor:
                     return "0:00:00"
 
             df[settings.COL_RETENCAO] = df.apply(calc_retention, axis=1)
-        else:
-            # Nenhum dos dois modos disponível
-            self._log(
-                f"⚠ Aviso: Não foi possível calcular retenção. "
-                f"Esperava coluna '{settings.COL_TEMPO}' ou "
-                f"'{settings.COL_DATA_INICIAL}' e '{settings.COL_DATA_FINAL}'"
-            )
-            df[settings.COL_RETENCAO] = "0:00:00"
-
-        # Adicionar coluna auxiliar numérica para cálculo de média no Excel
-        if settings.COL_RETENCAO in df.columns:
             df['Tempo_Minutos'] = self._convert_time_to_minutes(df[settings.COL_RETENCAO])
             self._log("✓ Coluna 'Tempo_Minutos' calculada para média no Excel")
+
+        else:
+            self._log(
+                f"⚠ Aviso: Não foi possível calcular retenção. "
+                f"Esperava coluna '{settings.COL_PERMANENCIA}', '{settings.COL_TEMPO}' ou "
+                f"'{settings.COL_DATA_INICIAL}' e '{settings.COL_DATA_FINAL}'"
+            )
+            df['Tempo_Minutos'] = 0
 
         # Remover colunas completamente vazias
         df = self._remove_empty_columns(df)
 
-        # Selecionar colunas disponíveis
-        selected_cols = DataFrameHelper.select_available_columns(
-            df,
-            required=column_mappings.REQUIRED_COLUMNS['relatorio_acesso'],
-            optional=column_mappings.OPTIONAL_COLUMNS['relatorio_acesso']
+        # Ordenar colunas: conhecidas primeiro (na ordem definida), depois as demais
+        known_order = (
+            column_mappings.REQUIRED_COLUMNS['relatorio_acesso'] +
+            column_mappings.OPTIONAL_COLUMNS['relatorio_acesso']
         )
+        ordered_cols = [col for col in known_order if col in df.columns]
+        remaining_cols = [col for col in df.columns if col not in ordered_cols]
 
-        # Garantir que Retenção está incluída se foi calculada
-        if settings.COL_RETENCAO in df.columns and settings.COL_RETENCAO not in selected_cols:
-            selected_cols.append(settings.COL_RETENCAO)
+        # Garantir que Retenção e Tempo_Minutos estão no final (necessários para fórmulas Excel)
+        priority_end = []
+        for col in [settings.COL_RETENCAO, 'Tempo_Minutos']:
+            if col in df.columns and col not in ordered_cols and col not in remaining_cols:
+                priority_end.append(col)
 
-        # Garantir que Tempo_Minutos está incluída (necessária para fórmulas Excel)
-        if 'Tempo_Minutos' in df.columns and 'Tempo_Minutos' not in selected_cols:
-            selected_cols.append('Tempo_Minutos')
-
-        # Retornar DataFrame com colunas selecionadas
-        if selected_cols:
-            return df[selected_cols]
-
-        return df
+        all_cols = ordered_cols + remaining_cols + priority_end
+        return df[all_cols]
 
     def _process_mensagens(self, df: pd.DataFrame) -> pd.DataFrame:
         """

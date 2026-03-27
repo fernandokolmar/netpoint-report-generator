@@ -60,6 +60,8 @@ OPTIONAL_COLUMNS = {
         'Categoria do Conselho', 'UF do Conselho', 'Número Registro Profissional',
         # Tempo (calculados)
         'Conteudo', 'Retenção (hh:mm)', 'Tempo_Minutos',
+        # Permanência (novo formato)
+        'Permanencia', 'NumPessoas', 'Total assistindo',
         # Dados de acesso
         'Data Acesso Inicial', 'Data Acesso Final', 'HostAddress', 'Numero de Pessoas',
         # Outros
