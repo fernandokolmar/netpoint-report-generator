@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.4.0
+# Netpoint Report Generator v1.5.0
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -56,10 +56,10 @@ O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
 - Total de mensagens
 - **Suporta formato Minnit**: Converte automaticamente timestamp Unix para data/hora legível
 
-#### 4. Acessos
-- Relatório detalhado de acesso por usuário
-- Nome, horários de entrada/saída, tempo de permanência
-- Tempo total e médio calculados
+#### 4. Permanência
+- Relatório detalhado de permanência por usuário
+- Coluna `Permanencia` com total de minutos por participante
+- Suporte a `NumPessoas` e `Total assistindo`
 
 #### 5. Inscritos
 - Lista completa de inscritos
@@ -160,6 +160,11 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.5.0 (2026-03-27)
+- Planilha "Permanência" substitui "Acessos"
+- Suporte a NumPessoas e Total assistindo
+- Inscritos: todas as colunas com dados mantidas
+
 ### v1.4.0 (2025-03-05)
 - **Suporte a Enquetes**: Importação de múltiplos arquivos de enquete (opcional)
   - Botão "+ Adicionar Enquete" na interface — adicione quantas precisar
@@ -226,5 +231,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.4.0
-**Última atualização**: 05/03/2025
+**Versão**: 1.5.0
+**Última atualização**: 27/03/2026
