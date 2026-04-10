@@ -43,7 +43,8 @@ class VideoConferenceReportGenerator:
             'mensagens': '',
             'chat': '',
             'relatorio_acesso': '',
-            'totalizado': ''
+            'totalizado': '',
+            'presenca_zoom': ''
         }
 
         # Lista de enquetes dinâmicas: cada item é (enquete_key, entry_widget, row_frame)
@@ -96,8 +97,8 @@ class VideoConferenceReportGenerator:
         files_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         files_frame.columnconfigure(1, weight=1)
         
-        # Inscritos
-        ttk.Label(files_frame, text="Arquivo Inscritos:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        # Inscritos (opcional)
+        ttk.Label(files_frame, text="Arquivo Inscritos (opcional):").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         self.inscritos_entry = ttk.Entry(files_frame, width=50)
         self.inscritos_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
         ttk.Button(files_frame, text="Procurar",
@@ -141,21 +142,30 @@ class VideoConferenceReportGenerator:
         ttk.Button(files_frame, text="Preview",
                   command=lambda: self.show_file_preview('totalizado')).grid(row=4, column=3, padx=5, pady=5)
 
+        # Presença no Zoom (opcional)
+        ttk.Label(files_frame, text="Presença no Zoom (opcional):").grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+        self.zoom_entry = ttk.Entry(files_frame, width=50)
+        self.zoom_entry.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
+        ttk.Button(files_frame, text="Procurar",
+                  command=lambda: self.load_file('presenca_zoom', self.zoom_entry)).grid(row=5, column=2, padx=5, pady=5)
+        ttk.Button(files_frame, text="Preview",
+                  command=lambda: self.show_file_preview('presenca_zoom')).grid(row=5, column=3, padx=5, pady=5)
+
         # Separador e seção de Enquetes
         ttk.Separator(files_frame, orient='horizontal').grid(
-            row=5, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=8
+            row=6, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=8
         )
 
         # Cabeçalho da seção de enquetes com botão "+"
         enquetes_header = ttk.Frame(files_frame)
-        enquetes_header.grid(row=6, column=0, columnspan=4, sticky=(tk.W, tk.E), padx=5, pady=2)
+        enquetes_header.grid(row=7, column=0, columnspan=4, sticky=(tk.W, tk.E), padx=5, pady=2)
         ttk.Label(enquetes_header, text="Enquetes (opcional):", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
         ttk.Button(enquetes_header, text="+ Adicionar Enquete",
                    command=self._add_enquete_row).pack(side=tk.LEFT, padx=10)
 
         # Frame container para as linhas de enquete (crescimento dinâmico)
         self.enquetes_container = ttk.Frame(files_frame)
-        self.enquetes_container.grid(row=7, column=0, columnspan=4, sticky=(tk.W, tk.E))
+        self.enquetes_container.grid(row=8, column=0, columnspan=4, sticky=(tk.W, tk.E))
         self.enquetes_container.columnconfigure(1, weight=1)
 
         # Status/Log
@@ -360,6 +370,10 @@ class VideoConferenceReportGenerator:
             self.totalizado_entry.delete(0, tk.END)
             self.totalizado_entry.insert(0, files['totalizado'])
 
+        if 'presenca_zoom' in files:
+            self.zoom_entry.delete(0, tk.END)
+            self.zoom_entry.insert(0, files['presenca_zoom'])
+
         # Restaurar enquetes do histórico
         for key, path in files.items():
             if key.startswith('enquete_') and path:
@@ -424,6 +438,7 @@ class VideoConferenceReportGenerator:
         self.chat_entry.delete(0, tk.END)
         self.relatorio_entry.delete(0, tk.END)
         self.totalizado_entry.delete(0, tk.END)
+        self.zoom_entry.delete(0, tk.END)
 
         # Remover todas as linhas de enquete da UI
         for _, _, frame in self.enquete_rows:
@@ -435,7 +450,8 @@ class VideoConferenceReportGenerator:
             'mensagens': '',
             'chat': '',
             'relatorio_acesso': '',
-            'totalizado': ''
+            'totalizado': '',
+            'presenca_zoom': ''
         }
         self.controller.clear_cache()
         self.log("Todos os campos foram limpos.")
@@ -497,7 +513,7 @@ class VideoConferenceReportGenerator:
             True se arquivos obrigatórios foram carregados, False caso contrário
         """
         # Arquivos opcionais não são validados
-        optional_files = ['mensagens', 'chat']
+        optional_files = ['mensagens', 'chat', 'inscritos', 'presenca_zoom']
 
         missing_files = []
         for file_type, path in self.file_paths.items():

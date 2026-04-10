@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.5.0
+# Netpoint Report Generator v1.6.0
 
 Aplicação desenvolvida pela **Netpoint** para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -8,12 +8,13 @@ Aplicação desenvolvida pela **Netpoint** para processar dados de videoconferê
 
 ### Processamento de Dados
 - Importa arquivos CSV de videoconferência:
-  - **Inscritos** - Lista de participantes inscritos
+  - **Inscritos** (opcional) - Lista de participantes inscritos
   - **Mensagens** (opcional) - Mensagens da sessão
   - **Chat** (opcional) - Chat da sessão
   - **Permanência** - Logs de permanência dos participantes
   - **Totalizado** - Dados agregados por minuto
   - **Enquetes** (opcional, múltiplas) - Resultados de enquetes do evento
+  - **Presença no Zoom** (opcional) - Participantes de reunião Zoom paralela
 
 ### Detecção Automática de Formato
 - Suporta diferentes estruturas de CSV de diferentes eventos
@@ -58,9 +59,14 @@ O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
   - Se houver valores, é gerada coluna `Total assistindo` (NumPessoas + 1)
 - Backward compatible com formato legado (`Tempo` em minutos ou datas de acesso)
 
-#### 5. Inscritos
+#### 5. Inscritos (opcional)
 - Lista completa de inscritos
 - Todas as colunas com dados são mantidas, independente do formato do evento
+
+#### 6. Zoom Consolidado + Presença no Zoom (opcional)
+- Geradas quando há arquivo de presença do Zoom
+- **Zoom Consolidado**: uma linha por participante com tempo total de sessão (soma de todas as entradas/saídas), primeira entrada e última saída
+- **Presença no Zoom**: detalhe completo linha a linha exportado pelo Zoom
 
 #### 6+. Enquetes (opcional, uma aba por enquete)
 - Gerada automaticamente para cada arquivo de enquete adicionado
@@ -155,6 +161,14 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.6.0 (2026-04-10)
+- **Inscritos agora opcional**: eventos sem lista de inscritos funcionam normalmente
+- **Presença no Zoom**: novo campo opcional para importar arquivo CSV exportado pelo Zoom
+  - Detecta automaticamente o formato especial de duplo cabeçalho do Zoom
+  - **Zoom Consolidado**: aba com uma linha por participante, tempo total somado, primeira entrada e última saída
+  - **Presença no Zoom**: aba com detalhe linha a linha de todas as sessões
+- Resumo do evento se adapta dinamicamente (sem linha de inscritos quando não há arquivo)
+
 ### v1.5.0 (2026-03-27)
 - **Planilha "Permanência"**: Substitui a aba "Acessos" com dados mais completos
   - Usa coluna `Permanencia` (minutos diretos, sem conversão)
@@ -208,5 +222,5 @@ Para problemas ou sugestões, entre em contato com a equipe Netpoint.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.5.0
-**Última atualização**: 27/03/2026
+**Versão**: 1.6.0
+**Última atualização**: 10/04/2026

@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.5.0
+# Netpoint Report Generator v1.6.0
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -160,6 +160,12 @@ App Estatisticas/
 
 ## Changelog
 
+### v1.6.0 (2026-04-10)
+- Inscritos agora opcional
+- Presença no Zoom: novo campo com loader especial para formato Zoom
+- Zoom Consolidado: aba com tempo total por participante
+- Resumo dinâmico sem linha de inscritos quando não há arquivo
+
 ### v1.5.0 (2026-03-27)
 - Planilha "Permanência" substitui "Acessos"
 - Suporte a NumPessoas e Total assistindo
@@ -231,5 +237,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.5.0
-**Última atualização**: 27/03/2026
+**Versão**: 1.6.0
+**Última atualização**: 10/04/2026

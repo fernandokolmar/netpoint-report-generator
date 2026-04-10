@@ -147,7 +147,11 @@ class CSVLoader:
             self._notify(f"Carregando {key}...")
 
             try:
-                df = self.load_csv(path)
+                # Formato especial para presença no Zoom
+                if key == 'presenca_zoom':
+                    df = self._load_zoom_csv(path)
+                else:
+                    df = self.load_csv(path)
 
                 # Validação 1: Não está vazio
                 if df.empty:
@@ -274,6 +278,55 @@ class CSVLoader:
                     self._notify(
                         f"⚠ Aviso: Coluna '{col}' em {df_type} tem {null_percentage:.1f}% de valores vazios"
                     )
+
+    def _load_zoom_csv(self, file_path: str) -> pd.DataFrame:
+        """
+        Carrega arquivo CSV exportado pelo Zoom.
+
+        O Zoom exporta com um formato especial de duas seções:
+        - Linha 1: cabeçalho do resumo da reunião
+        - Linha 2: dados do resumo (tópico, duração, etc.)
+        - Linha 3: em branco
+        - Linha 4: cabeçalho real dos participantes
+        - Linhas 5+: dados dos participantes
+
+        Este método detecta a linha do cabeçalho real procurando por
+        "Nome (nome original)" e carrega a partir daí.
+
+        Args:
+            file_path: Caminho do arquivo CSV do Zoom
+
+        Returns:
+            DataFrame com dados dos participantes
+        """
+        self._validate_file_size(file_path)
+
+        # Tentar encodings comuns
+        for encoding in [CSV_ENCODING, 'utf-8', 'latin-1']:
+            try:
+                # Ler o arquivo linha a linha para encontrar o cabeçalho real
+                with open(file_path, 'r', encoding=encoding) as f:
+                    lines = f.readlines()
+                break
+            except UnicodeDecodeError:
+                continue
+
+        # Encontrar a linha onde começa o cabeçalho real dos participantes
+        header_row = None
+        for i, line in enumerate(lines):
+            if 'Nome (nome original)' in line or 'User Name (Original Name)' in line:
+                header_row = i
+                break
+
+        if header_row is None:
+            # Fallback: tentar carregar normalmente (pode ser formato diferente)
+            self._notify("⚠ Formato Zoom não detectado — carregando como CSV padrão")
+            return self._load_with_auto_separator(file_path, CSV_ENCODING, ',')
+
+        # Carregar a partir da linha do cabeçalho real
+        self._notify(f"✓ Formato Zoom detectado — cabeçalho de participantes na linha {header_row + 1}")
+        df = pd.read_csv(file_path, encoding=encoding, sep=',', skiprows=header_row)
+        return df
 
     def _notify(self, message: str) -> None:
         """

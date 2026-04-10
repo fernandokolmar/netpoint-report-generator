@@ -222,6 +222,9 @@ class ExcelGenerator:
         # Flags para controle de abas opcionais
         has_mensagens = 'mensagens_processed' in dfs and dfs['mensagens_processed'] is not None and len(dfs['mensagens_processed']) > 0
         has_chat = 'chat_processed' in dfs and dfs['chat_processed'] is not None and len(dfs['chat_processed']) > 0
+        has_inscritos = 'inscritos_processed' in dfs and dfs['inscritos_processed'] is not None and len(dfs['inscritos_processed']) > 0
+        has_presenca_zoom = 'presenca_zoom_processed' in dfs and dfs['presenca_zoom_processed'] is not None and len(dfs['presenca_zoom_processed']) > 0
+        has_zoom_consolidado = 'presenca_zoom_consolidado' in dfs and dfs['presenca_zoom_consolidado'] is not None and len(dfs['presenca_zoom_consolidado']) > 0
 
         # Verificar se há coluna Total assistindo (NumPessoas com valores > 0)
         relatorio_df = dfs.get('relatorio_processed')
@@ -242,7 +245,7 @@ class ExcelGenerator:
 
         # Criar planilhas na ordem correta
         self._log("Criando planilha Retenção...")
-        self._create_retencao_sheet(wb, dfs['totalizado_processed'], has_mensagens, has_chat, has_total_espectadores)
+        self._create_retencao_sheet(wb, dfs['totalizado_processed'], has_mensagens, has_chat, has_total_espectadores, has_inscritos)
 
         # Criar planilha Mensagens (se houver dados)
         if has_mensagens:
@@ -261,8 +264,22 @@ class ExcelGenerator:
         self._log("Criando planilha Permanencia...")
         self._create_permanencia_sheet(wb, dfs['relatorio_processed'])
 
-        self._log("Criando planilha Inscritos...")
-        self._create_inscritos_sheet(wb, dfs['inscritos_processed'])
+        # Criar planilha Presença no Zoom — consolidado e detalhe (se houver dados)
+        if has_zoom_consolidado:
+            self._log("Criando planilha Zoom Consolidado...")
+            self._create_zoom_consolidado_sheet(wb, dfs['presenca_zoom_consolidado'])
+        if has_presenca_zoom:
+            self._log("Criando planilha Presença no Zoom (detalhe)...")
+            self._create_presenca_zoom_sheet(wb, dfs['presenca_zoom_processed'])
+        if not has_presenca_zoom and not has_zoom_consolidado:
+            self._log("⊘ Planilha Presença no Zoom: não há dados")
+
+        # Criar planilha Inscritos (se houver dados)
+        if has_inscritos:
+            self._log("Criando planilha Inscritos...")
+            self._create_inscritos_sheet(wb, dfs['inscritos_processed'])
+        else:
+            self._log("⊘ Planilha Inscritos: não há dados")
 
         # Criar planilhas de enquete (se houver)
         for i, (key, df_enquete) in enumerate(enquetes, start=1):
@@ -275,7 +292,7 @@ class ExcelGenerator:
 
         # Finalizar fórmulas cross-sheet (DEPOIS que todas as tabelas existem)
         self._log("Finalizando fórmulas da tabela Resumo...")
-        self._finalize_resumo_formulas(wb, has_mensagens, has_chat, has_total_espectadores)
+        self._finalize_resumo_formulas(wb, has_mensagens, has_chat, has_total_espectadores, has_inscritos)
 
         # Salvar arquivo
         self._log(f"Salvando arquivo: {output_path}")
@@ -284,7 +301,7 @@ class ExcelGenerator:
         self._log(f"Arquivo salvo com sucesso: {output_path}")
         return output_path
 
-    def _create_retencao_sheet(self, wb: Workbook, df: pd.DataFrame, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False) -> None:
+    def _create_retencao_sheet(self, wb: Workbook, df: pd.DataFrame, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False, has_inscritos: bool = True) -> None:
         """
         Cria planilha "Retenção na live" com gráfico e resumo estatístico.
 
@@ -362,7 +379,7 @@ class ExcelGenerator:
         ws[f'B{total_row}'].font = Font(bold=True)
 
         # Criar estrutura da tabela de resumo (SEM fórmulas cross-sheet ainda)
-        self._create_resumo_structure(ws, len(df), has_mensagens, has_chat, has_total_espectadores)
+        self._create_resumo_structure(ws, len(df), has_mensagens, has_chat, has_total_espectadores, has_inscritos)
 
         # Criar gráfico de linha
         self._create_retencao_chart(ws, len(df))
@@ -374,7 +391,7 @@ class ExcelGenerator:
         ws.column_dimensions['P'].width = 25
         ws.column_dimensions['Q'].width = 20
 
-    def _create_resumo_structure(self, ws: Worksheet, data_rows: int, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False) -> None:
+    def _create_resumo_structure(self, ws: Worksheet, data_rows: int, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False, has_inscritos: bool = True) -> None:
         """
         Cria estrutura da tabela de resumo (apenas com fórmulas locais).
 
@@ -386,47 +403,49 @@ class ExcelGenerator:
             has_mensagens: Se True, inclui linha de mensagens
             has_chat: Se True, inclui linha de chat
             has_total_espectadores: Se True, inclui linha "Total de espectadores"
+            has_inscritos: Se True, inclui linha "Quantidade de Inscritos"
         """
-        # IMPORTANTE: Headers devem ter valores válidos (não vazios)
         ws['P1'] = 'Estatística'
         ws['Q1'] = 'Valor'
 
-        # Linha 2: sempre fixa
-        ws['P2'] = 'Quantidade de Inscritos'
-        ws['P3'] = 'Usuários distintos na live'
+        # Construir linhas dinamicamente
+        current_row = 2
 
-        # Linha 4: Total de espectadores (condicional) ou Pico de audiência
+        if has_inscritos:
+            ws[f'P{current_row}'] = 'Quantidade de Inscritos'
+            current_row += 1
+
+        ws[f'P{current_row}'] = 'Usuários distintos na live'
+        distintos_row = current_row
+        current_row += 1
+
         if has_total_espectadores:
-            ws['P4'] = 'Total de espectadores'
-            ws['P5'] = 'Pico de audiência'
-            ws['P6'] = 'Hora de pico'
-            ws['P7'] = 'Tempo médio assitido (hh:mm)'
-            pico_row = 5
-            hora_pico_row = 6
-            tempo_medio_row = 7
-            next_row = 8
-        else:
-            ws['P4'] = 'Pico de audiência'
-            ws['P5'] = 'Hora de pico'
-            ws['P6'] = 'Tempo médio assitido (hh:mm)'
-            pico_row = 4
-            hora_pico_row = 5
-            tempo_medio_row = 6
-            next_row = 7
+            ws[f'P{current_row}'] = 'Total de espectadores'
+            current_row += 1
 
-        # Adicionar linha de mensagens (se houver)
+        ws[f'P{current_row}'] = 'Pico de audiência'
+        pico_row = current_row
+        current_row += 1
+
+        ws[f'P{current_row}'] = 'Hora de pico'
+        hora_pico_row = current_row
+        current_row += 1
+
+        ws[f'P{current_row}'] = 'Tempo médio assitido (hh:mm)'
+        tempo_medio_row = current_row
+        current_row += 1
+
         if has_mensagens:
-            ws[f'P{next_row}'] = 'Total mensagens enviadas'
-            next_row += 1
+            ws[f'P{current_row}'] = 'Total mensagens enviadas'
+            current_row += 1
 
-        # Adicionar linha de chat (se houver)
         if has_chat:
-            ws[f'P{next_row}'] = 'Total mensagens no chat'
-            next_row += 1
+            ws[f'P{current_row}'] = 'Total mensagens no chat'
+            current_row += 1
 
-        last_row = max(next_row - 1, tempo_medio_row)
+        last_row = current_row - 1
 
-        # Fórmulas locais (referem apenas à planilha Retencao, sem cross-sheet)
+        # Fórmulas locais (apenas referências à planilha Retencao)
         ws[f'Q{pico_row}'] = f"=MAX({settings.TABLE_RETENCAO}[Usuários conectados])"
         ws[f'Q{hora_pico_row}'] = (
             f"=_xlfn.XLOOKUP(MAX({settings.TABLE_RETENCAO}[Usuários conectados]),"
@@ -435,23 +454,24 @@ class ExcelGenerator:
         )
         ws[f'Q{hora_pico_row}'].alignment = Alignment(horizontal='right')
 
-        # Guardar linhas dinâmicas para _finalize_resumo_formulas usar
+        # Guardar mapa de linhas para _finalize_resumo_formulas
         ws._resumo_rows = {
-            'tempo_medio': tempo_medio_row,
-            'next_optional': next_row if not has_mensagens and not has_chat else next_row,
+            'has_inscritos': has_inscritos,
             'has_total_espectadores': has_total_espectadores,
             'has_mensagens': has_mensagens,
             'has_chat': has_chat,
+            'distintos_row': distintos_row,
+            'tempo_medio_row': tempo_medio_row,
+            'next_optional_row': tempo_medio_row + 1,
         }
 
-        # Criar tabela de resumo SEM linha de totais
         self._create_table(
             ws,
             table_name=settings.TABLE_RESUMO,
             ref=f"P1:Q{last_row}"
         )
 
-    def _finalize_resumo_formulas(self, wb: Workbook, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False) -> None:
+    def _finalize_resumo_formulas(self, wb: Workbook, has_mensagens: bool = True, has_chat: bool = False, has_total_espectadores: bool = False, has_inscritos: bool = True) -> None:
         """
         Adiciona fórmulas cross-sheet na tabela de resumo.
 
@@ -462,14 +482,17 @@ class ExcelGenerator:
             has_mensagens: Se True, adiciona fórmula para mensagens
             has_chat: Se True, adiciona fórmula para chat
             has_total_espectadores: Se True, adiciona fórmula para total de espectadores
+            has_inscritos: Se True, adiciona fórmula para quantidade de inscritos
         """
         ws = wb["Retencao na live"]
 
-        # Recuperar linhas dinâmicas definidas em _create_resumo_structure
+        # Recuperar mapa de linhas definido em _create_resumo_structure
         resumo_rows = getattr(ws, '_resumo_rows', {})
-        tempo_medio_row = resumo_rows.get('tempo_medio', 6)
+        distintos_row = resumo_rows.get('distintos_row', 3)
+        tempo_medio_row = resumo_rows.get('tempo_medio_row', 6)
+        next_row = resumo_rows.get('next_optional_row', 7)
 
-        # Usar nomes sanitizados nas fórmulas
+        # Nomes sanitizados para fórmulas
         data_cadastro = self._sanitize_column_name('Data de Cadastro')
         nome = self._sanitize_column_name('Nome')
         tempo_minutos = self._sanitize_column_name('Tempo_Minutos')
@@ -477,21 +500,21 @@ class ExcelGenerator:
         data = self._sanitize_column_name('Data')
         data_formatada = self._sanitize_column_name('DataFormatada')
 
-        # Quantidade de inscritos = contagem da tabela inscritos
-        ws['Q2'] = f"=SUBTOTAL(103,{settings.TABLE_INSCRITOS}[{data_cadastro}])"
-        # Usuários distintos = contagem da tabela permanencia
-        ws['Q3'] = f"=SUBTOTAL(103,{settings.TABLE_PERMANENCIA}[{nome}])"
+        # Quantidade de inscritos (condicional — linha 2 apenas se houver inscritos)
+        if has_inscritos:
+            ws['Q2'] = f"=SUBTOTAL(103,{settings.TABLE_INSCRITOS}[{data_cadastro}])"
 
-        # Total de espectadores (condicional — linha 4)
+        # Usuários distintos na live
+        ws[f'Q{distintos_row}'] = f"=SUBTOTAL(103,{settings.TABLE_PERMANENCIA}[{nome}])"
+
+        # Total de espectadores (condicional — linha após distintos)
         if has_total_espectadores:
-            ws['Q4'] = f"=SUM({settings.TABLE_PERMANENCIA}[{total_assistindo}])"
+            espectadores_row = distintos_row + 1
+            ws[f'Q{espectadores_row}'] = f"=SUM({settings.TABLE_PERMANENCIA}[{total_assistindo}])"
 
-        # Tempo médio assistido (linha dinâmica)
+        # Tempo médio assistido
         ws[f'Q{tempo_medio_row}'] = f"=AVERAGE({settings.TABLE_PERMANENCIA}[{tempo_minutos}])/1440"
         ws[f'Q{tempo_medio_row}'].number_format = '[h]:mm'
-
-        # Próxima linha disponível para fórmulas opcionais
-        next_row = tempo_medio_row + 1
 
         # Total mensagens (se houver)
         if has_mensagens:
@@ -911,6 +934,92 @@ class ExcelGenerator:
         ws[f'{last_col_letter}{total_row}'].font = Font(bold=True)
 
         # Ajustar larguras das colunas
+        self._auto_adjust_column_widths(ws, max_width=50)
+
+    def _create_zoom_consolidado_sheet(self, wb: Workbook, df: pd.DataFrame) -> None:
+        """
+        Cria planilha "Zoom Consolidado" com tempo total por participante.
+
+        Uma linha por participante com soma de todas as sessões.
+
+        Args:
+            wb: Workbook do openpyxl
+            df: DataFrame consolidado (um registro por participante)
+        """
+        ws = wb.create_sheet("Zoom Consolidado")
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+
+        sanitized_columns = {}
+        for i, col_name in enumerate(df.columns):
+            sanitized_columns[col_name] = unique_columns[i]
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = df.iloc[row_idx, col_idx]
+                value = self._convert_cell_value(value)
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        self._create_table(ws, table_name='tblZoomConsolidado', ref=tab_ref)
+
+        # Linha de totais: contagem de participantes + soma do tempo total
+        total_row = last_data_row + 1
+        nome_col = sanitized_columns.get('Nome (nome original)', unique_columns[0])
+        ws[f'A{total_row}'] = f"=SUBTOTAL(103,tblZoomConsolidado[{nome_col}])"
+        ws[f'A{total_row}'].font = Font(bold=True)
+
+        # Soma da coluna Duração total
+        duracao_col = sanitized_columns.get('Duração total (minutos)')
+        if duracao_col:
+            duracao_idx = list(df.columns).index('Duração total (minutos)') + 1
+            duracao_letter = get_column_letter(duracao_idx)
+            ws[f'{duracao_letter}{total_row}'] = f"=SUBTOTAL(109,tblZoomConsolidado[{duracao_col}])"
+            ws[f'{duracao_letter}{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=50)
+
+    def _create_presenca_zoom_sheet(self, wb: Workbook, df: pd.DataFrame) -> None:
+        """
+        Cria planilha "Presenca Zoom" com dados de participação na reunião Zoom.
+
+        Args:
+            wb: Workbook do openpyxl
+            df: DataFrame com dados de presença Zoom
+        """
+        ws = wb.create_sheet("Presenca Zoom")
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+
+        sanitized_columns = {}
+        for i, col_name in enumerate(df.columns):
+            sanitized_columns[col_name] = unique_columns[i]
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = df.iloc[row_idx, col_idx]
+                value = self._convert_cell_value(value)
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        self._create_table(ws, table_name='tblPresencaZoom', ref=tab_ref)
+
+        # Linha de total: contagem de participantes
+        total_row = last_data_row + 1
+        nome_col = sanitized_columns.get('Nome (nome original)', unique_columns[0])
+        ws[f'A{total_row}'] = f"=SUBTOTAL(103,tblPresencaZoom[{nome_col}])"
+        ws[f'A{total_row}'].font = Font(bold=True)
+
         self._auto_adjust_column_widths(ws, max_width=50)
 
     def _create_enquete_sheet(

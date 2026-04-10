@@ -80,11 +80,13 @@ class ReportDataProcessor:
 
         processed = {}
 
-        # Processar cada tipo de DataFrame
-        self._log("Processando inscritos...")
-        processed['inscritos_processed'] = self._process_inscritos(
-            dfs['inscritos'].copy()
-        )
+        # Processar inscritos (opcional)
+        if 'inscritos' in dfs and dfs['inscritos'] is not None:
+            self._log("Processando inscritos...")
+            processed['inscritos_processed'] = self._process_inscritos(dfs['inscritos'].copy())
+        else:
+            self._log("⊘ Inscritos: não há dados para processar")
+            processed['inscritos_processed'] = None
 
         self._log("Processando relatório de acesso...")
         processed['relatorio_processed'] = self._process_relatorio_acesso(
@@ -120,6 +122,16 @@ class ReportDataProcessor:
                 processed[f'{key}_processed'] = self._process_enquete(dfs[key].copy())
             else:
                 processed[f'{key}_processed'] = None
+
+        # Processar presença no Zoom (opcional)
+        if 'presenca_zoom' in dfs and dfs['presenca_zoom'] is not None:
+            self._log("Processando presença no Zoom...")
+            processed['presenca_zoom_processed'] = self._process_presenca_zoom(dfs['presenca_zoom'].copy())
+            processed['presenca_zoom_consolidado'] = self._consolidate_presenca_zoom(dfs['presenca_zoom'].copy())
+        else:
+            self._log("⊘ Presença no Zoom: não há dados para processar")
+            processed['presenca_zoom_processed'] = None
+            processed['presenca_zoom_consolidado'] = None
 
         self._log("Processando totalizado...")
         processed['totalizado_processed'] = self._process_totalizado(
@@ -463,6 +475,108 @@ class ReportDataProcessor:
         if available:
             return df[available]
         return df
+
+    def _process_presenca_zoom(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Processa DataFrame de presença no Zoom.
+
+        O arquivo exportado pelo Zoom tem formato especial:
+        - Linha 1: cabeçalho do resumo da reunião (Tópico, ID, Anfitrião, ...)
+        - Linha 2: dados do resumo
+        - Linha 3: em branco
+        - Linha 4: cabeçalho real dos participantes
+        - Linhas 5+: dados dos participantes
+
+        O data_loader já faz o parse correto pulando para a linha de
+        cabeçalho real (detectada pela coluna "Nome (nome original)").
+        Aqui apenas limpamos e selecionamos as colunas relevantes.
+
+        Args:
+            df: DataFrame já parseado com cabeçalho real dos participantes
+
+        Returns:
+            DataFrame processado
+        """
+        # Remover colunas completamente vazias
+        df = self._remove_empty_columns(df)
+
+        # Colunas relevantes (na ordem preferida)
+        desired = [
+            'Nome (nome original)', 'E-mail',
+            'Ingressar na hora', 'Hora de saída', 'Duração (minutos)',
+            'Convidado', 'Na sala de espera'
+        ]
+        ordered = [col for col in desired if col in df.columns]
+        remaining = [col for col in df.columns if col not in ordered]
+        return df[ordered + remaining]
+
+    def _consolidate_presenca_zoom(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Consolida presença no Zoom agrupando por participante.
+
+        O arquivo Zoom exporta uma linha por sessão (entrada/saída).
+        Um mesmo participante pode ter várias linhas (entrou/saiu/voltou).
+        Este método agrupa por nome e soma o tempo total.
+
+        Resultado por participante:
+        - Nome
+        - E-mail (primeiro valor não vazio)
+        - Primeira entrada
+        - Última saída
+        - Duração total (minutos) — soma de todas as sessões
+        - Convidado
+
+        Args:
+            df: DataFrame bruto de presença Zoom
+
+        Returns:
+            DataFrame consolidado com uma linha por participante
+        """
+        col_nome = 'Nome (nome original)'
+        col_email = 'E-mail'
+        col_entrada = 'Ingressar na hora'
+        col_saida = 'Hora de saída'
+        col_duracao = 'Duração (minutos)'
+        col_convidado = 'Convidado'
+
+        if col_nome not in df.columns or col_duracao not in df.columns:
+            self._log("⚠ Colunas esperadas não encontradas no arquivo Zoom — retornando sem consolidar")
+            return df
+
+        # Converter duração para numérico
+        df[col_duracao] = pd.to_numeric(df[col_duracao], errors='coerce').fillna(0)
+
+        # Agrupar por nome
+        agg = {col_duracao: 'sum'}
+
+        if col_email in df.columns:
+            agg[col_email] = lambda x: next((v for v in x if pd.notna(v) and str(v).strip()), '')
+
+        if col_entrada in df.columns:
+            agg[col_entrada] = 'min'
+
+        if col_saida in df.columns:
+            agg[col_saida] = 'max'
+
+        if col_convidado in df.columns:
+            agg[col_convidado] = 'first'
+
+        consolidado = df.groupby(col_nome, as_index=False).agg(agg)
+
+        # Reordenar colunas
+        desired_order = [col_nome, col_email, col_entrada, col_saida, col_duracao, col_convidado]
+        ordered = [c for c in desired_order if c in consolidado.columns]
+        remaining = [c for c in consolidado.columns if c not in ordered]
+        consolidado = consolidado[ordered + remaining]
+
+        # Renomear Duração para deixar claro que é total
+        consolidado = consolidado.rename(columns={col_duracao: 'Duração total (minutos)'})
+
+        # Ordenar por nome
+        consolidado = consolidado.sort_values(col_nome).reset_index(drop=True)
+
+        self._log(f"✓ Zoom consolidado: {len(consolidado)} participantes únicos")
+        return consolidado
 
     def _process_totalizado(self, df: pd.DataFrame) -> pd.DataFrame:
         """
