@@ -24,6 +24,8 @@ a = Analysis(
         ('ui', 'ui'),
         # Incluir pasta utils
         ('utils', 'utils'),
+        # Incluir assets visuais (logos, identidade)
+        ('visual', 'visual'),
         # Incluir config da API Anthropic (se existir)
         *([('anthropic_config.json', '.')] if os.path.exists(os.path.join(BASE_DIR, 'anthropic_config.json')) else []),
     ],
