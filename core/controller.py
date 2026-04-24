@@ -369,15 +369,10 @@ class ReportController:
             self.logger.exception(f"Erro ao gerar Relatório Zoom: {str(e)}")
             raise
 
-    def generate_smart_report(self, output_path: str) -> str:
+    def prepare_smart_report(self) -> Tuple[Dict, Optional[list]]:
         """
-        Gera o Relatório Inteligente em HTML a partir dos dados já processados.
-
-        Args:
-            output_path: Caminho onde salvar o arquivo HTML
-
-        Returns:
-            Caminho do arquivo HTML gerado
+        Etapa 1: Computa métricas e gera insights via IA.
+        Retorna (metrics, insights) para que a UI possa exibir o editor.
 
         Raises:
             ValueError: Se os dados não foram processados antes
@@ -387,10 +382,11 @@ class ReportController:
                 "Nenhum dado processado. Execute generate_report() antes de gerar o Relatório Inteligente."
             )
 
-        self._notify("Gerando Relatório Inteligente...")
-        self.logger.info(f"Gerando Relatório Inteligente em {output_path}")
+        self._notify("Calculando métricas do evento...")
+        self.logger.info("Preparando Relatório Inteligente — calculando métricas")
 
         metrics = compute_metrics(self.processed_dataframes)
+        self._last_metrics = metrics
 
         insights = None
         api_key = load_api_key()
@@ -401,9 +397,29 @@ class ReportController:
                 self.logger.info(f"{len(insights)} insights gerados via Claude API")
             except Exception as e:
                 self.logger.warning(f"Não foi possível gerar insights via IA: {e}")
-                self._notify("Aviso: insights IA indisponíveis, continuando sem eles...")
+                self._notify("Aviso: insights IA indisponíveis, relatório será gerado sem eles...")
         else:
             self.logger.info("anthropic_config.json não encontrado — relatório sem insights IA")
+
+        return metrics, insights
+
+    def finalize_smart_report(self, output_path: str, insights: Optional[list]) -> str:
+        """
+        Etapa 2: Renderiza e salva o HTML com os insights (possivelmente editados).
+
+        Args:
+            output_path: Caminho onde salvar o arquivo HTML
+            insights: Lista de insights editados pelo usuário (ou None)
+
+        Returns:
+            Caminho do arquivo HTML gerado
+        """
+        metrics = getattr(self, '_last_metrics', None)
+        if metrics is None:
+            raise ValueError("Chame prepare_smart_report() antes de finalize_smart_report().")
+
+        self._notify("Gerando arquivo HTML...")
+        self.logger.info(f"Finalizando Relatório Inteligente em {output_path}")
 
         html_content = render_html(metrics, insights)
         result = export_html(html_content, output_path)

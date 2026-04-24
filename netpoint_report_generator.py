@@ -855,20 +855,67 @@ class VideoConferenceReportGenerator:
 
     def generate_smart_report(self) -> None:
         """Gera o Relatório Inteligente HTML a partir dos dados já processados."""
+        self.smart_report_button.config(state='disabled', text='Gerando insights...')
+        self.log("Calculando métricas e consultando Claude...")
+
+        thread = threading.Thread(
+            target=self._prepare_smart_report_bg,
+            daemon=True
+        )
+        thread.start()
+
+    def _prepare_smart_report_bg(self) -> None:
+        """Roda em background: computa métricas e busca insights via Claude."""
+        try:
+            metrics, insights = self.controller.prepare_smart_report()
+            self.root.after(0, self._on_insights_ready, metrics, insights)
+        except Exception as e:
+            self.root.after(0, self._on_smart_report_error, str(e))
+
+    def _on_insights_ready(self, metrics, insights) -> None:
+        """Volta para a thread principal após receber os insights — abre o editor."""
+        from ui.insights_editor import InsightsEditorWindow
+
+        self.smart_report_button.config(state='normal', text='Gerar Relatório Inteligente')
+
+        # Se não há insights (sem API key), pula o editor e vai direto para salvar
+        if not insights:
+            self.log("Sem insights IA — gerando relatório apenas com métricas.")
+            self._ask_save_and_finalize(insights=None)
+            return
+
+        self.log(f"✓ {len(insights)} insights gerados — revise antes de finalizar.")
+
+        InsightsEditorWindow(
+            parent=self.root,
+            insights=insights,
+            on_confirm=self._ask_save_and_finalize,
+            on_cancel=lambda: self.log("Geração cancelada pelo usuário."),
+        )
+
+    def _ask_save_and_finalize(self, insights) -> None:
+        """Pergunta onde salvar e finaliza o HTML com os insights (editados ou não)."""
         output_path = filedialog.asksaveasfilename(
             defaultextension=".html",
             filetypes=[("HTML files", "*.html"), ("All files", "*.*")],
             initialfile=f"Netpoint_Relatorio_Inteligente_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         )
         if not output_path:
+            self.log("Operação cancelada — nenhum arquivo salvo.")
             return
 
         try:
-            self.controller.generate_smart_report(output_path)
-            self.log(f"✓ Relatório Inteligente aberto no navegador: {os.path.basename(output_path)}")
+            result = self.controller.finalize_smart_report(output_path, insights)
+            self.log(f"✓ Relatório Inteligente aberto no navegador: {os.path.basename(result)}")
         except Exception as e:
-            self.log(f"Erro ao gerar Relatório Inteligente: {str(e)}")
+            self.log(f"Erro ao finalizar Relatório Inteligente: {str(e)}")
             messagebox.showerror("Erro", str(e))
+
+    def _on_smart_report_error(self, message: str) -> None:
+        """Callback de erro do Relatório Inteligente."""
+        self.smart_report_button.config(state='normal', text='Gerar Relatório Inteligente')
+        self.log(f"Erro ao gerar Relatório Inteligente: {message}")
+        messagebox.showerror("Erro", message)
 
     def _on_success(self, result_path: str, stats: dict) -> None:
         """Callback executado na thread principal quando processamento termina com sucesso."""
