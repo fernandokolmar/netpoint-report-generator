@@ -1,10 +1,7 @@
 {
-  "version": "1.7.0",
-  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.7.0/Netpoint.Report.Generator.exe",
+  "version": "1.7.1",
+  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.7.1/Netpoint.Report.Generator.exe",
   "release_notes": [
-    "Atualização automática — o aplicativo agora verifica se há uma versão mais recente ao ser aberto e, se houver, permite atualizar com um clique sem precisar baixar ou substituir arquivos manualmente.",
-    "Relatório Zoom completo — os arquivos exportados pelo Zoom agora geram três abas no Excel: Consolidado (resumo da reunião e lista de participantes), Presença Zoom (detalhe de todas as sessões) e Inscrições Zoom (lista completa de inscritos).",
-    "Cruzamento de participantes com inscrições — o consolidado cruza automaticamente os participantes da reunião com a lista de inscritos, exibindo e-mail, especialidade e clínica quando disponíveis.",
-    "Nomes dos campos atualizados — os campos renomeados para 'Participantes Zoom' e 'Inscrições Zoom' refletem agora os nomes reais dos arquivos exportados pelo Zoom."
+    "Campo fixo de Participantes Zoom — a aba Relatório Zoom agora tem um campo fixo para o arquivo de Participantes Zoom, igual ao campo de Inscrições Zoom, mantendo também o botão de adicionar arquivos extras para quando houver mais de uma reunião."
   ]
 }

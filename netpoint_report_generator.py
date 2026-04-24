@@ -54,7 +54,8 @@ class VideoConferenceReportGenerator:
         # Lista de arquivos Zoom dinâmicos (aba Zoom)
         self.zoom_rows = []
         self.zoom_file_paths: Dict[str, str] = {}
-        self.zoom_inscritos_path: str = ''  # inscritos Zoom da aba Zoom
+        self.zoom_participantes_path: str = ''  # campo fixo de participantes
+        self.zoom_inscritos_path: str = ''      # campo fixo de inscrições
 
         # Controller (Dependency Injection)
         self.controller = ReportController(progress_callback=self.log)
@@ -279,31 +280,38 @@ class VideoConferenceReportGenerator:
         # Seção de arquivos Zoom
         zoom_files_frame = ttk.LabelFrame(parent, text="Arquivos Zoom", padding="10")
         zoom_files_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-        zoom_files_frame.columnconfigure(0, weight=1)
+        zoom_files_frame.columnconfigure(1, weight=1)
 
-        # Botão para adicionar arquivos
+        # Participantes Zoom — campo fixo
+        ttk.Label(zoom_files_frame, text="Participantes Zoom (opcional):").grid(
+            row=0, column=0, sticky=tk.W, padx=5, pady=4)
+        self.zoom_participantes_entry = ttk.Entry(zoom_files_frame, width=50)
+        self.zoom_participantes_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=4)
+        ttk.Button(zoom_files_frame, text="Procurar",
+                   command=self._load_zoom_participantes_file).grid(row=0, column=2, padx=5, pady=4)
+
+        # Botão para adicionar arquivos extras dinamicamente
         add_btn_frame = ttk.Frame(zoom_files_frame)
-        add_btn_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 6))
-        ttk.Button(add_btn_frame, text="+ Adicionar Participantes Zoom",
-                   command=self._add_zoom_row).pack(side=tk.LEFT)
+        add_btn_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 4))
+        ttk.Button(add_btn_frame, text="+ Adicionar mais Participantes Zoom",
+                   command=self._add_zoom_row).pack(side=tk.LEFT, padx=5)
 
-        # Container dinâmico
+        # Container dinâmico para arquivos extras
         self.zoom_container = ttk.Frame(zoom_files_frame)
-        self.zoom_container.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        self.zoom_container.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E))
         self.zoom_container.columnconfigure(1, weight=1)
 
-        # Inscritos Zoom (opcional)
+        # Separador
         ttk.Separator(zoom_files_frame, orient='horizontal').grid(
-            row=2, column=0, sticky=(tk.W, tk.E), pady=6)
-        inscritos_zoom_frame = ttk.Frame(zoom_files_frame)
-        inscritos_zoom_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
-        inscritos_zoom_frame.columnconfigure(1, weight=1)
-        ttk.Label(inscritos_zoom_frame, text="Inscrições Zoom (opcional):").grid(
-            row=0, column=0, sticky=tk.W, padx=5, pady=4)
-        self.zoom_inscritos_entry = ttk.Entry(inscritos_zoom_frame, width=50)
-        self.zoom_inscritos_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=4)
-        ttk.Button(inscritos_zoom_frame, text="Procurar",
-                   command=self._load_zoom_inscritos_file).grid(row=0, column=2, padx=5, pady=4)
+            row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=6)
+
+        # Inscrições Zoom — campo fixo
+        ttk.Label(zoom_files_frame, text="Inscrições Zoom (opcional):").grid(
+            row=4, column=0, sticky=tk.W, padx=5, pady=4)
+        self.zoom_inscritos_entry = ttk.Entry(zoom_files_frame, width=50)
+        self.zoom_inscritos_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=5, pady=4)
+        ttk.Button(zoom_files_frame, text="Procurar",
+                   command=self._load_zoom_inscritos_file).grid(row=4, column=2, padx=5, pady=4)
 
         # Log do Zoom
         zoom_log_frame = ttk.LabelFrame(parent, text="Status", padding="8")
@@ -399,6 +407,18 @@ class VideoConferenceReportGenerator:
             entry.insert(0, file_path)
             self.zoom_log(f"Arquivo {key} carregado: {os.path.basename(file_path)}")
 
+    def _load_zoom_participantes_file(self) -> None:
+        """Abre diálogo para selecionar arquivo CSV de participantes Zoom (campo fixo)."""
+        file_path = filedialog.askopenfilename(
+            title="Selecionar Participantes Zoom (CSV)",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+        if file_path:
+            self.zoom_participantes_path = file_path
+            self.zoom_participantes_entry.delete(0, tk.END)
+            self.zoom_participantes_entry.insert(0, file_path)
+            self.zoom_log(f"Participantes Zoom carregado: {os.path.basename(file_path)}")
+
     def _load_zoom_inscritos_file(self) -> None:
         """Abre diálogo para selecionar arquivo CSV de inscrições Zoom (aba Zoom)."""
         file_path = filedialog.askopenfilename(
@@ -424,18 +444,25 @@ class VideoConferenceReportGenerator:
             frame.destroy()
         self.zoom_rows = []
         self.zoom_file_paths = {}
+        self.zoom_participantes_path = ''
+        self.zoom_participantes_entry.delete(0, tk.END)
         self.zoom_inscritos_path = ''
         self.zoom_inscritos_entry.delete(0, tk.END)
         self.zoom_log("Campos limpos.")
 
     def process_zoom_report(self) -> None:
         """Coordena a geração do Relatório Zoom."""
-        # Verificar se há pelo menos um arquivo
-        valid_paths = {k: v for k, v in self.zoom_file_paths.items() if v}
+        # Incluir campo fixo de participantes junto aos dinâmicos
+        all_paths = dict(self.zoom_file_paths)
+        if self.zoom_participantes_path:
+            # Inserir como zoom_0 para manter ordenação antes dos dinâmicos
+            all_paths = {'zoom_0': self.zoom_participantes_path, **all_paths}
+
+        valid_paths = {k: v for k, v in all_paths.items() if v}
         if not valid_paths:
             messagebox.showerror(
                 "Erro",
-                "Adicione pelo menos um arquivo Zoom antes de gerar o relatório."
+                "Selecione pelo menos um arquivo de Participantes Zoom antes de gerar o relatório."
             )
             return
 
