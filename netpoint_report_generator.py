@@ -970,30 +970,38 @@ class VideoConferenceReportGenerator:
 
         win = tk.Toplevel(self.root)
         win.title("Atualização Disponível")
-        win.geometry("520x480")
+        win.geometry("520x500")
         win.resizable(True, True)
-        win.minsize(460, 400)
+        win.minsize(460, 420)
         win.grab_set()
 
+        # Layout com grid: cabeçalho (row 0) + notas (row 1, expand) + rodapé fixo (row 2)
+        win.columnconfigure(0, weight=1)
+        win.rowconfigure(1, weight=1)  # só a área de notas expande
+
         # Cabeçalho
-        ttk.Label(win, text="Nova versão disponível!", font=('Arial', 12, 'bold')).pack(pady=(18, 4))
+        header = ttk.Frame(win)
+        header.grid(row=0, column=0, sticky='ew', padx=20, pady=(18, 0))
+        ttk.Label(header, text="Nova versão disponível!", font=('Arial', 12, 'bold')).pack()
         ttk.Label(
-            win,
+            header,
             text=f"Versão instalada: {settings.APP_VERSION}    →    Versão nova: {new_version}",
             font=('Arial', 10)
-        ).pack(pady=(0, 10))
+        ).pack(pady=(4, 10))
 
-        # Notas cumulativas por versão — ocupa o espaço disponível
+        # Notas cumulativas — expande verticalmente
         if notes:
             notes_frame = ttk.LabelFrame(win, text="O que há de novo", padding="10")
-            notes_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 8))
+            notes_frame.grid(row=1, column=0, sticky='nsew', padx=20, pady=(0, 8))
+            notes_frame.columnconfigure(0, weight=1)
+            notes_frame.rowconfigure(0, weight=1)
 
             text = tk.Text(notes_frame, wrap=tk.WORD, font=('Arial', 9),
                            relief='flat', bg=win.cget('bg'), state='normal')
             scrollbar = ttk.Scrollbar(notes_frame, command=text.yview)
             text.configure(yscrollcommand=scrollbar.set)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            text.pack(fill=tk.BOTH, expand=True)
+            scrollbar.grid(row=0, column=1, sticky='ns')
+            text.grid(row=0, column=0, sticky='nsew')
 
             text.tag_configure('version', font=('Arial', 9, 'bold'), foreground='#2c2c3e', spacing1=6)
             text.tag_configure('note', lmargin1=12, lmargin2=12, spacing1=2)
@@ -1009,20 +1017,24 @@ class VideoConferenceReportGenerator:
                     text.insert(tk.END, f"  • {entry}\n", 'note')
 
             text.configure(state='disabled')
+        else:
+            # Sem notas: linha vazia para manter o layout
+            ttk.Frame(win).grid(row=1, column=0)
 
-        # Rodapé e botões — sempre visíveis, fora do expand
-        footer_frame = ttk.Frame(win)
-        footer_frame.pack(fill=tk.X, padx=20, pady=(4, 14))
+        # Rodapé — row 2, nunca expande, sempre visível
+        footer = ttk.Frame(win)
+        footer.grid(row=2, column=0, sticky='ew', padx=20, pady=(0, 16))
+        footer.columnconfigure(0, weight=1)
 
         ttk.Label(
-            footer_frame,
+            footer,
             text="O aplicativo fechará e reabrirá automaticamente após a atualização.",
             font=('Arial', 8),
             foreground='gray'
-        ).pack(pady=(0, 8))
+        ).grid(row=0, column=0, pady=(0, 8))
 
-        btn_frame = ttk.Frame(footer_frame)
-        btn_frame.pack()
+        btn_frame = ttk.Frame(footer)
+        btn_frame.grid(row=1, column=0)
 
         def on_yes():
             win.destroy()

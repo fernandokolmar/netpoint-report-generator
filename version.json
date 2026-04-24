@@ -1,10 +1,17 @@
 {
-  "version": "1.9.4",
+  "version": "1.9.5",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.4/Netpoint.Reports.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.4/Netpoint.Reports.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.5/Netpoint.Reports.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.5/Netpoint.Reports.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.5",
+      "notes": [
+        "Correção definitiva da atualização automática — o app agora aguarda o sistema liberar os arquivos temporários antes de reiniciar, eliminando o erro de DLL em computadores lentos ou com antivírus ativo.",
+        "Botão 'Atualizar agora' sempre visível independente do tamanho da janela ou resolução da tela."
+      ]
+    },
     {
       "version": "1.9.4",
       "notes": [

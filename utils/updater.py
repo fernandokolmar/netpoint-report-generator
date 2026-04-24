@@ -178,13 +178,20 @@ def _download_and_apply_windows(
             if os.path.getsize(tmp_exe) < 1_000_000:
                 raise ValueError("Arquivo baixado parece corrompido (muito pequeno)")
 
+            # sys._MEIPASS aponta para a pasta _MEI que este processo está usando.
+            # Aguardamos ela desaparecer antes de relançar — determinístico, sem delay fixo.
+            mei_path = getattr(sys, '_MEIPASS', '')
+            logger.info(f"Pasta _MEI monitorada pelo bat: {mei_path!r}")
+
             bat_content = f"""@echo off
 setlocal
 
 set "NEW_EXE={tmp_exe}"
 set "CUR_EXE={current_exe}"
 set "TARGET_PID={os.getpid()}"
+set "MEI_PATH={mei_path}"
 
+rem --- 1. Aguarda o processo principal encerrar ---
 :waitloop
 tasklist /FI "PID eq %TARGET_PID%" 2>NUL | find /I "%TARGET_PID%" >NUL
 if not errorlevel 1 (
@@ -192,10 +199,18 @@ if not errorlevel 1 (
     goto waitloop
 )
 
-rem Aguarda o PyInstaller terminar de limpar a pasta _MEI
-timeout /t 3 /nobreak >NUL
+rem --- 2. Aguarda a pasta _MEI ser deletada pelo bootloader (max 30s) ---
+set WAIT_COUNT=0
+:meiloop
+if "%MEI_PATH%"=="" goto mei_done
+if not exist "%MEI_PATH%" goto mei_done
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% geq 30 goto mei_done
+timeout /t 1 /nobreak >NUL
+goto meiloop
+:mei_done
 
-rem Tenta mover (renomeia atomicamente se na mesma unidade)
+rem --- 3. Substitui o executável ---
 move /Y "%NEW_EXE%" "%CUR_EXE%" >NUL 2>&1
 if errorlevel 1 (
     copy /Y "%NEW_EXE%" "%CUR_EXE%" >NUL 2>&1
