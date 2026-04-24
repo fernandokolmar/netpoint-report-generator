@@ -368,34 +368,85 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         point_hover_border_colors = ['#7b4ff5'] * len(rvalues)
         point_hover_border_colors[pico_idx] = '#ffffff'
         pico_label = rlabels[pico_idx] if pico_idx < len(rlabels) else ''
-        script_lines.append(
-            f"new Chart(document.getElementById('chartRetencao'), {{"
-            f"type:'line',"
-            f"data:{{"
-            f"labels:{json.dumps(rlabels, ensure_ascii=False)},"
-            f"datasets:[{{data:{json.dumps(rvalues)},"
-            f"borderColor:'#7b4ff5',backgroundColor:'rgba(123,79,245,0.08)',"
-            f"tension:0.4,fill:true,"
-            f"pointRadius:{json.dumps(point_radii)},"
-            f"pointHoverRadius:{json.dumps(point_hover_radii)},"
-            f"pointBackgroundColor:{json.dumps(point_colors)},"
-            f"pointHoverBackgroundColor:{json.dumps(point_hover_colors)},"
-            f"pointBorderColor:{json.dumps(point_border_colors)},"
-            f"pointHoverBorderColor:{json.dumps(point_hover_border_colors)},"
-            f"pointBorderWidth:2,"
-            f"pointHoverBorderWidth:2,"
-            f"borderWidth:2.5}}]"
-            f"}},"
-            f"options:{{responsive:true,maintainAspectRatio:false,"
-            f"plugins:{{legend:{{display:false}},"
-            f"tooltip:{{callbacks:{{label:function(c){{"
-            f"var suffix=c.dataIndex==={pico_idx}?' ★ Pico':'';"
-            f"return c.parsed.y+' usuários'+suffix;"
-            f"}}}}}}}},"
-            f"scales:{{x:{{ticks:{{maxTicksLimit:12,color:'#888'}},grid:{{display:false}}}},"
-            f"y:{{ticks:{{color:'#888'}},grid:{{color:'rgba(0,0,0,0.05)'}}}}}}}}"
-            f"}});"
-        )
+        # Plugin inline: ao entrar/sair do gráfico, mostra/esconde todas as bolinhas de uma vez
+        script_lines.append(f"""
+(function(){{
+  var picoIdx = {pico_idx};
+  var allDotsPlugin = {{
+    id: 'allDots',
+    afterDraw: function(chart) {{
+      if (!chart._showAllDots) return;
+      var ctx = chart.ctx;
+      var ds = chart.data.datasets[0];
+      var meta = chart.getDatasetMeta(0);
+      meta.data.forEach(function(point, i) {{
+        if (i === picoIdx) return; // pico já é desenhado pelo Chart.js
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.strokeStyle = '#7b4ff5';
+        ctx.lineWidth = 1.5;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }});
+    }}
+  }};
+  var canvas = document.getElementById('chartRetencao');
+  var chartRetencao = new Chart(canvas, {{
+    type: 'line',
+    plugins: [allDotsPlugin],
+    data: {{
+      labels: {json.dumps(rlabels, ensure_ascii=False)},
+      datasets: [{{
+        data: {json.dumps(rvalues)},
+        borderColor: '#7b4ff5',
+        backgroundColor: 'rgba(123,79,245,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: {json.dumps(point_radii)},
+        pointHoverRadius: {json.dumps(point_hover_radii)},
+        pointBackgroundColor: {json.dumps(point_colors)},
+        pointHoverBackgroundColor: {json.dumps(point_hover_colors)},
+        pointBorderColor: {json.dumps(point_border_colors)},
+        pointHoverBorderColor: {json.dumps(point_hover_border_colors)},
+        pointBorderWidth: 2,
+        pointHoverBorderWidth: 2,
+        borderWidth: 2.5
+      }}]
+    }},
+    options: {{
+      responsive: true,
+      maintainAspectRatio: false,
+      onHover: function(evt, active, chart) {{
+        chart._showAllDots = evt.type !== 'mouseout';
+      }},
+      plugins: {{
+        legend: {{ display: false }},
+        tooltip: {{
+          mode: 'index',
+          intersect: false,
+          callbacks: {{
+            label: function(c) {{
+              var suffix = c.dataIndex === picoIdx ? ' ★ Pico' : '';
+              return c.parsed.y + ' usuários' + suffix;
+            }}
+          }}
+        }}
+      }},
+      scales: {{
+        x: {{ ticks: {{ maxTicksLimit: 12, color: '#888' }}, grid: {{ display: false }} }},
+        y: {{ ticks: {{ color: '#888' }}, grid: {{ color: 'rgba(0,0,0,0.05)' }} }}
+      }}
+    }}
+  }});
+  canvas.addEventListener('mouseleave', function() {{
+    chartRetencao._showAllDots = false;
+    chartRetencao.draw();
+  }});
+}})();
+""")
 
     if metrics.get('has_enquetes'):
         colors = ['#3db3f5','#9b59f5','#27ae60','#f39c12','#e74c3c',
