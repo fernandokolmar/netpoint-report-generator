@@ -56,23 +56,33 @@ def check_for_updates(
 
             latest = data.get('version', '')
             download_url = data.get('download_url', '')
-            notes_raw = data.get('release_notes', [])
-
-            # Aceita string ou lista
-            if isinstance(notes_raw, str):
-                notes = [notes_raw] if notes_raw else []
-            else:
-                notes = [str(n) for n in notes_raw if n]
 
             if not latest or not download_url:
                 logger.warning("version.json inválido ou incompleto")
                 return
 
-            if Version(latest) > Version(current_version):
-                logger.info(f"Nova versão disponível: {latest}")
-                on_update_available(latest, download_url, notes)
-            else:
+            if not Version(latest) > Version(current_version):
                 logger.info(f"Versão atual ({current_version}) está atualizada")
+                return
+
+            # Montar notas cumulativas: apenas versões > current_version, ordem decrescente
+            history = data.get('history', [])
+            notes = []
+            for entry in history:
+                v = entry.get('version', '')
+                entry_notes = entry.get('notes', [])
+                if v and entry_notes and Version(v) > Version(current_version):
+                    notes.append({'version': v, 'notes': [str(n) for n in entry_notes if n]})
+
+            # Fallback: se não há histórico, usa release_notes antigo
+            if not notes:
+                notes_raw = data.get('release_notes', [])
+                if isinstance(notes_raw, str):
+                    notes_raw = [notes_raw] if notes_raw else []
+                notes = [{'version': latest, 'notes': [str(n) for n in notes_raw if n]}]
+
+            logger.info(f"Nova versão disponível: {latest} ({len(notes)} versões de novidades)")
+            on_update_available(latest, download_url, notes)
 
         except Exception as e:
             if not silent_on_error:

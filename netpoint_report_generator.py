@@ -963,31 +963,48 @@ class VideoConferenceReportGenerator:
         )
 
     def _on_update_available(self, new_version: str, download_url: str, notes: list) -> None:
-        """Exibe diálogo customizado com detalhes da nova versão."""
+        """Exibe diálogo com release notes cumulativas de todas as versões que o usuário não tem."""
         win = tk.Toplevel(self.root)
         win.title("Atualização Disponível")
-        win.geometry("460x320")
-        win.resizable(False, False)
+        win.geometry("500x420")
+        win.resizable(True, True)
+        win.minsize(420, 320)
         win.grab_set()
 
         # Cabeçalho
         ttk.Label(win, text="Nova versão disponível!", font=('Arial', 12, 'bold')).pack(pady=(18, 4))
         ttk.Label(
             win,
-            text=f"Versão atual: {settings.APP_VERSION}    →    Nova versão: {new_version}",
+            text=f"Versão instalada: {settings.APP_VERSION}    →    Versão nova: {new_version}",
             font=('Arial', 10)
         ).pack(pady=(0, 10))
 
-        # Notas de release
+        # Notas cumulativas por versão
         if notes:
             notes_frame = ttk.LabelFrame(win, text="O que há de novo", padding="10")
             notes_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
 
-            text = tk.Text(notes_frame, height=7, wrap=tk.WORD, font=('Arial', 9),
+            text = tk.Text(notes_frame, wrap=tk.WORD, font=('Arial', 9),
                            relief='flat', bg=win.cget('bg'), state='normal')
+            scrollbar = ttk.Scrollbar(notes_frame, command=text.yview)
+            text.configure(yscrollcommand=scrollbar.set)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
             text.pack(fill=tk.BOTH, expand=True)
-            for note in notes:
-                text.insert(tk.END, f"• {note}\n")
+
+            text.tag_configure('version', font=('Arial', 9, 'bold'), foreground='#2c2c3e', spacing1=6)
+            text.tag_configure('note', lmargin1=12, lmargin2=12, spacing1=2)
+
+            for entry in notes:
+                # entry pode ser dict {version, notes} ou str (formato legado)
+                if isinstance(entry, dict):
+                    v = entry.get('version', '')
+                    entry_notes = entry.get('notes', [])
+                    text.insert(tk.END, f"Versão {v}\n", 'version')
+                    for n in entry_notes:
+                        text.insert(tk.END, f"  • {n}\n", 'note')
+                else:
+                    text.insert(tk.END, f"  • {entry}\n", 'note')
+
             text.configure(state='disabled')
 
         # Rodapé

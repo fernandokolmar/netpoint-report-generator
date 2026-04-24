@@ -1,7 +1,48 @@
 {
-  "version": "1.8.0",
-  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.8.0/Netpoint.Report.Generator.exe",
-  "release_notes": [
-    "Relatório Inteligente — após processar os arquivos do evento, um novo botão 'Gerar Relatório Inteligente' cria uma página HTML profissional com KPIs executivos (inscritos, presentes, taxa de presença, pico de audiência, tempo médio), gráfico de retenção de audiência, ranking dos participantes mais engajados, resultados de enquetes com gráficos e presença no Zoom. O arquivo HTML pode ser aberto no navegador e impresso ou salvo como PDF com Ctrl+P."
+  "version": "1.9.0",
+  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.0/Netpoint.Report.Generator.exe",
+  "history": [
+    {
+      "version": "1.9.0",
+      "notes": [
+        "Relatório Inteligente aprimorado — detalhamento completo do evento com horário de início e fim, duração total, lista completa de participantes com ranking e tempo assistido.",
+        "Análise por IA — insights gerados pelo Claude com editor de revisão: edite, regenere com orientação ou remova cards individualmente antes de finalizar.",
+        "Gráfico de retenção interativo — ponto de pico destacado, bolinhas aparecem ao passar o mouse, tooltip segue o cursor mostrando usuários em cada momento.",
+        "Identidade visual Netpoint — fonte Inter, paleta azul-roxo com gradiente, logo embebido no relatório HTML."
+      ]
+    },
+    {
+      "version": "1.8.0",
+      "notes": [
+        "Relatório Inteligente — após processar os arquivos do evento, um novo botão 'Gerar Relatório Inteligente' cria uma página HTML profissional com KPIs executivos (inscritos, presentes, taxa de presença, pico de audiência, tempo médio), gráfico de retenção de audiência, ranking dos participantes mais engajados, resultados de enquetes com gráficos e presença no Zoom."
+      ]
+    },
+    {
+      "version": "1.7.1",
+      "notes": [
+        "Campo fixo 'Participantes Zoom' adicionado na aba Relatório Zoom, mantendo o botão dinâmico de múltiplos arquivos.",
+        "Atualização automática — o app verifica novas versões ao iniciar e oferece download e instalação automática com um clique."
+      ]
+    },
+    {
+      "version": "1.7.0",
+      "notes": [
+        "Atualização automática — o aplicativo verifica novas versões ao iniciar e instala automaticamente.",
+        "Renomeação de campos: 'Presença no Zoom' passou a 'Participantes Zoom' e 'Inscritos Zoom' passou a 'Inscrições Zoom'."
+      ]
+    },
+    {
+      "version": "1.6.0",
+      "notes": [
+        "Presença no Zoom e Inscritos tornaram-se opcionais — o relatório é gerado normalmente mesmo sem esses arquivos."
+      ]
+    },
+    {
+      "version": "1.5.0",
+      "notes": [
+        "Nova planilha 'Permanência' no Excel com detalhamento por tempo de acesso.",
+        "Suporte à coluna NumPessoas para contagem de múltiplos acessos simultâneos por dispositivo."
+      ]
+    }
   ]
 }
