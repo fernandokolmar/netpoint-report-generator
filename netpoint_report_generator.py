@@ -873,7 +873,6 @@ class VideoConferenceReportGenerator:
         """Callback executado na thread principal quando processamento termina com sucesso."""
         self.progress_bar.stop()
         self.process_button.config(state='normal')
-        self.smart_report_button.config(state='normal')
 
         try:
             name = self.file_history.generate_name(self.file_paths)
@@ -886,6 +885,10 @@ class VideoConferenceReportGenerator:
         StatsWindow(self.root, stats, result_path)
         self.clear_all()
         self.log("Campos limpos. Pronto para novo relatório.")
+
+        # Habilitar após clear_all (que desabilita), pois os dados ainda estão no controller
+        self.smart_report_button.config(state='normal')
+        self.log("✓ Relatório Inteligente disponível — clique no botão para gerar.")
 
     def _on_error(self, title: str, message: str) -> None:
         """Callback executado na thread principal quando ocorre erro."""
