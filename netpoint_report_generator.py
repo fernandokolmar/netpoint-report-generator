@@ -848,24 +848,60 @@ class VideoConferenceReportGenerator:
         """Dispara verificação de atualização em background."""
         check_for_updates(
             current_version=settings.APP_VERSION,
-            on_update_available=lambda v, url: self.root.after(
-                0, self._on_update_available, v, url
+            on_update_available=lambda v, url, notes: self.root.after(
+                0, self._on_update_available, v, url, notes
             )
         )
 
-    def _on_update_available(self, new_version: str, download_url: str) -> None:
-        """Exibe diálogo de nova versão disponível."""
-        answer = messagebox.askyesno(
-            "Atualização Disponível",
-            f"Uma nova versão está disponível!\n\n"
-            f"Versão atual: {settings.APP_VERSION}\n"
-            f"Nova versão:  {new_version}\n\n"
-            f"Deseja atualizar agora?\n"
-            f"O aplicativo será reiniciado automaticamente após a atualização.",
-            icon='info'
-        )
-        if answer:
+    def _on_update_available(self, new_version: str, download_url: str, notes: list) -> None:
+        """Exibe diálogo customizado com detalhes da nova versão."""
+        win = tk.Toplevel(self.root)
+        win.title("Atualização Disponível")
+        win.geometry("460x320")
+        win.resizable(False, False)
+        win.grab_set()
+
+        # Cabeçalho
+        ttk.Label(win, text="Nova versão disponível!", font=('Arial', 12, 'bold')).pack(pady=(18, 4))
+        ttk.Label(
+            win,
+            text=f"Versão atual: {settings.APP_VERSION}    →    Nova versão: {new_version}",
+            font=('Arial', 10)
+        ).pack(pady=(0, 10))
+
+        # Notas de release
+        if notes:
+            notes_frame = ttk.LabelFrame(win, text="O que há de novo", padding="10")
+            notes_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
+
+            text = tk.Text(notes_frame, height=7, wrap=tk.WORD, font=('Arial', 9),
+                           relief='flat', bg=win.cget('bg'), state='normal')
+            text.pack(fill=tk.BOTH, expand=True)
+            for note in notes:
+                text.insert(tk.END, f"• {note}\n")
+            text.configure(state='disabled')
+
+        # Rodapé
+        ttk.Label(
+            win,
+            text="O aplicativo será reiniciado automaticamente após a atualização.",
+            font=('Arial', 8),
+            foreground='gray'
+        ).pack(pady=(0, 8))
+
+        btn_frame = ttk.Frame(win)
+        btn_frame.pack(pady=(0, 14))
+
+        def on_yes():
+            win.destroy()
             self._start_update(download_url)
+
+        def on_no():
+            win.destroy()
+
+        ttk.Button(btn_frame, text="Atualizar agora", command=on_yes,
+                   style='Accent.TButton').pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Agora não", command=on_no).pack(side=tk.LEFT, padx=8)
 
     def _start_update(self, download_url: str) -> None:
         """Abre janela de progresso e inicia o download da atualização."""

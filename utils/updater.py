@@ -35,7 +35,7 @@ CHECK_TIMEOUT = 5
 
 def check_for_updates(
     current_version: str,
-    on_update_available: Callable[[str, str], None],
+    on_update_available: Callable[[str, str, list], None],
     silent_on_error: bool = True
 ) -> None:
     """
@@ -44,7 +44,7 @@ def check_for_updates(
     Args:
         current_version: Versão instalada (ex: '1.7.0')
         on_update_available: Callback chamado na thread principal quando há
-                             nova versão. Recebe (nova_versao, download_url).
+                             nova versão. Recebe (nova_versao, download_url, release_notes).
         silent_on_error: Se True, ignora erros de rede silenciosamente.
     """
     def _check():
@@ -56,6 +56,13 @@ def check_for_updates(
 
             latest = data.get('version', '')
             download_url = data.get('download_url', '')
+            notes_raw = data.get('release_notes', [])
+
+            # Aceita string ou lista
+            if isinstance(notes_raw, str):
+                notes = [notes_raw] if notes_raw else []
+            else:
+                notes = [str(n) for n in notes_raw if n]
 
             if not latest or not download_url:
                 logger.warning("version.json inválido ou incompleto")
@@ -63,8 +70,7 @@ def check_for_updates(
 
             if Version(latest) > Version(current_version):
                 logger.info(f"Nova versão disponível: {latest}")
-                # Chamar callback na thread que criou o widget (via after)
-                on_update_available(latest, download_url)
+                on_update_available(latest, download_url, notes)
             else:
                 logger.info(f"Versão atual ({current_version}) está atualizada")
 

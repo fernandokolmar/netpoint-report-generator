@@ -1,5 +1,10 @@
 {
   "version": "1.7.0",
   "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.7.0/Netpoint.Report.Generator.exe",
-  "release_notes": "Relatório Zoom completo com Consolidado, Presença e Inscrições"
+  "release_notes": [
+    "Relatório Zoom completo com abas Consolidado, Presença Zoom e Inscrições Zoom",
+    "Cruzamento automático de participantes com inscritos (match por e-mail e nome)",
+    "Auto-update: o app verifica e aplica atualizações automaticamente",
+    "Labels atualizados: Participantes Zoom e Inscrições Zoom"
+  ]
 }
