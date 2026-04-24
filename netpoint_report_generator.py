@@ -255,6 +255,15 @@ class VideoConferenceReportGenerator:
             style='Accent.TButton'
         )
         self.process_button.pack(side=tk.LEFT, padx=5)
+
+        self.smart_report_button = ttk.Button(
+            action_frame,
+            text="Gerar Relatório Inteligente",
+            command=self.generate_smart_report,
+            state='disabled'
+        )
+        self.smart_report_button.pack(side=tk.LEFT, padx=5)
+
         ttk.Button(action_frame, text="Limpar", command=self.clear_all).pack(side=tk.LEFT, padx=5)
         ttk.Button(action_frame, text="Sair", command=self.root.quit).pack(side=tk.LEFT, padx=5)
 
@@ -753,6 +762,7 @@ class VideoConferenceReportGenerator:
             'presenca_zoom': '',
             'inscritos_zoom': ''
         }
+        self.smart_report_button.config(state='disabled')
         self.controller.clear_cache()
         self.log("Todos os campos foram limpos.")
 
@@ -842,10 +852,28 @@ class VideoConferenceReportGenerator:
         except Exception as e:
             self.root.after(0, self._on_error, "Erro inesperado", str(e))
 
+    def generate_smart_report(self) -> None:
+        """Gera o Relatório Inteligente HTML a partir dos dados já processados."""
+        output_path = filedialog.asksaveasfilename(
+            defaultextension=".html",
+            filetypes=[("HTML files", "*.html"), ("All files", "*.*")],
+            initialfile=f"Netpoint_Relatorio_Inteligente_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        )
+        if not output_path:
+            return
+
+        try:
+            self.controller.generate_smart_report(output_path)
+            self.log(f"✓ Relatório Inteligente aberto no navegador: {os.path.basename(output_path)}")
+        except Exception as e:
+            self.log(f"Erro ao gerar Relatório Inteligente: {str(e)}")
+            messagebox.showerror("Erro", str(e))
+
     def _on_success(self, result_path: str, stats: dict) -> None:
         """Callback executado na thread principal quando processamento termina com sucesso."""
         self.progress_bar.stop()
         self.process_button.config(state='normal')
+        self.smart_report_button.config(state='normal')
 
         try:
             name = self.file_history.generate_name(self.file_paths)

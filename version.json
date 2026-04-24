@@ -1,7 +1,7 @@
 {
-  "version": "1.7.1",
-  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.7.1/Netpoint.Report.Generator.exe",
+  "version": "1.8.0",
+  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.8.0/Netpoint.Report.Generator.exe",
   "release_notes": [
-    "Campo fixo de Participantes Zoom — a aba Relatório Zoom agora tem um campo fixo para o arquivo de Participantes Zoom, igual ao campo de Inscrições Zoom, mantendo também o botão de adicionar arquivos extras para quando houver mais de uma reunião."
+    "Relatório Inteligente — após processar os arquivos do evento, um novo botão 'Gerar Relatório Inteligente' cria uma página HTML profissional com KPIs executivos (inscritos, presentes, taxa de presença, pico de audiência, tempo médio), gráfico de retenção de audiência, ranking dos participantes mais engajados, resultados de enquetes com gráficos e presença no Zoom. O arquivo HTML pode ser aberto no navegador e impresso ou salvo como PDF com Ctrl+P."
   ]
 }

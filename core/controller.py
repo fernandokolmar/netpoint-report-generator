@@ -9,6 +9,9 @@ import time
 from .data_loader import CSVLoader
 from .data_processor import ReportDataProcessor
 from .excel_generator import ExcelGenerator
+from .report_engine import compute_metrics
+from .report_renderer import render_html
+from .report_exporter import export_html, open_in_browser
 from utils.logger import get_logger
 
 
@@ -364,6 +367,36 @@ class ReportController:
         except Exception as e:
             self.logger.exception(f"Erro ao gerar Relatório Zoom: {str(e)}")
             raise
+
+    def generate_smart_report(self, output_path: str) -> str:
+        """
+        Gera o Relatório Inteligente em HTML a partir dos dados já processados.
+
+        Args:
+            output_path: Caminho onde salvar o arquivo HTML
+
+        Returns:
+            Caminho do arquivo HTML gerado
+
+        Raises:
+            ValueError: Se os dados não foram processados antes
+        """
+        if not self.processed_dataframes:
+            raise ValueError(
+                "Nenhum dado processado. Execute generate_report() antes de gerar o Relatório Inteligente."
+            )
+
+        self._notify("Gerando Relatório Inteligente...")
+        self.logger.info(f"Gerando Relatório Inteligente em {output_path}")
+
+        metrics = compute_metrics(self.processed_dataframes)
+        html_content = render_html(metrics)
+        result = export_html(html_content, output_path)
+        open_in_browser(result)
+
+        self._notify(f"✓ Relatório Inteligente gerado: {result}")
+        self.logger.info(f"Relatório Inteligente gerado: {result}")
+        return result
 
     def _collect_statistics(
         self,
