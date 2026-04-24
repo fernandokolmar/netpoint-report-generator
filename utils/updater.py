@@ -119,16 +119,18 @@ def download_and_apply(
     download_url: str,
     current_exe: str,
     on_progress: Optional[Callable[[int], None]] = None,
+    on_done: Optional[Callable[[], None]] = None,
     on_error: Optional[Callable[[str], None]] = None
 ) -> None:
     """
     Baixa o novo executável e aplica a atualização.
     Detecta a plataforma e usa o método correto (bat no Windows, sh no macOS).
+    on_done: chamado na thread principal quando a substituição foi concluída.
     """
     if _get_platform() == 'macos':
-        _download_and_apply_macos(download_url, current_exe, on_progress, on_error)
+        _download_and_apply_macos(download_url, current_exe, on_progress, on_done, on_error)
     else:
-        _download_and_apply_windows(download_url, current_exe, on_progress, on_error)
+        _download_and_apply_windows(download_url, current_exe, on_progress, on_done, on_error)
 
 
 def _download_file(url, dest: str,
@@ -162,6 +164,7 @@ def _download_and_apply_windows(
     download_url: str,
     current_exe: str,
     on_progress: Optional[Callable[[int], None]],
+    on_done: Optional[Callable[[], None]],
     on_error: Optional[Callable[[str], None]]
 ) -> None:
     def _run():
@@ -222,7 +225,10 @@ if errorlevel 1 (
     del "%NEW_EXE%" >NUL 2>&1
 )
 
-start "" "%CUR_EXE%"
+rem --- 4. NÃO relança automaticamente ---
+rem O PyInstaller onefile extrai DLLs para %TEMP% na inicialização.
+rem Relançar imediatamente causa conflito com antivírus/sistema ainda
+rem liberando a pasta _MEI anterior. O usuário reabre manualmente.
 del "%~f0"
 endlocal
 """
@@ -235,7 +241,15 @@ endlocal
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 close_fds=True
             )
-            logger.info("Script iniciado — encerrando app")
+            logger.info("Script de substituição iniciado — fechando app")
+
+            # Notifica UI antes de fechar (on_done roda na thread principal via after)
+            if on_done:
+                on_done()
+
+            # Pequena pausa para a UI exibir a mensagem antes de fechar
+            import time
+            time.sleep(2)
             os._exit(0)
 
         except Exception as e:
@@ -250,6 +264,7 @@ def _download_and_apply_macos(
     download_url: str,
     current_exe: str,
     on_progress: Optional[Callable[[int], None]],
+    on_done: Optional[Callable[[], None]],
     on_error: Optional[Callable[[str], None]]
 ) -> None:
     def _run():

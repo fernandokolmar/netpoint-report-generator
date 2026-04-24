@@ -1,10 +1,16 @@
 {
-  "version": "1.9.6",
+  "version": "1.9.7",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.6/Netpoint.Reports.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.6/Netpoint.Reports.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.7/Netpoint.Reports.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.7/Netpoint.Reports.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.7",
+      "notes": [
+        "Correção definitiva da atualização automática no Windows — o app substitui o executável, exibe confirmação e fecha. Reabra o app para usar a nova versão. Elimina completamente o erro de DLL do Python."
+      ]
+    },
     {
       "version": "1.9.6",
       "notes": [

@@ -1032,7 +1032,7 @@ class VideoConferenceReportGenerator:
 
         ttk.Label(
             footer,
-            text="O aplicativo fechará e reabrirá automaticamente após a atualização.",
+            text="O aplicativo fechará após o download. Reabra-o para usar a nova versão.",
             font=(UI_FONT, 8),
             foreground='gray'
         ).grid(row=0, column=0, pady=(0, 8))
@@ -1055,13 +1055,13 @@ class VideoConferenceReportGenerator:
         """Abre janela de progresso e inicia o download da atualização."""
         win = tk.Toplevel(self.root)
         win.title("Atualizando...")
-        win.geometry("380x120")
+        win.geometry("400x130")
         win.resizable(False, False)
         win.grab_set()
 
         ttk.Label(win, text="Baixando atualização, aguarde...", font=(UI_FONT, 10)).pack(pady=(18, 6))
 
-        progress = ttk.Progressbar(win, length=320, mode='determinate', maximum=100)
+        progress = ttk.Progressbar(win, length=340, mode='determinate', maximum=100)
         progress.pack(pady=4)
 
         status_var = tk.StringVar(value="Conectando...")
@@ -1070,6 +1070,14 @@ class VideoConferenceReportGenerator:
         def on_progress(pct: int) -> None:
             self.root.after(0, lambda: progress.configure(value=pct))
             self.root.after(0, lambda: status_var.set(f"{pct}% concluído"))
+
+        def on_done() -> None:
+            win.destroy()
+            messagebox.showinfo(
+                "Atualização Concluída",
+                "A atualização foi instalada com sucesso!\n\n"
+                "Reabra o Netpoint Reports para usar a nova versão."
+            )
 
         def on_error(msg: str) -> None:
             win.destroy()
@@ -1083,6 +1091,7 @@ class VideoConferenceReportGenerator:
             download_url=download_url,
             current_exe=get_current_exe(),
             on_progress=on_progress,
+            on_done=on_done,
             on_error=on_error
         )
 
