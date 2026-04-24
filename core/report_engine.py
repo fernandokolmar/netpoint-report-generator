@@ -18,9 +18,12 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
     zoom_consol: Optional[pd.DataFrame] = processed.get('presenca_zoom_consolidado')
     zoom_meta: Dict = processed.get('presenca_zoom_meta') or {}
 
-    # --- evento_data & evento_duracao ---
+    # --- Dados temporais do evento ---
     evento_data = ''
+    evento_hora_inicio = ''
+    evento_hora_fim = ''
     evento_duracao = ''
+    evento_duracao_fmt = ''
     retencao_labels: List[str] = []
     retencao_values: List[int] = []
     pico_audiencia: Optional[int] = None
@@ -32,9 +35,16 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
         if col_data in totalizado.columns:
             datas = pd.to_datetime(totalizado[col_data], errors='coerce').dropna()
             if not datas.empty:
-                evento_data = datas.iloc[0].strftime('%d/%m/%Y')
-                duracao_min = int((datas.max() - datas.min()).total_seconds() / 60)
+                dt_inicio = datas.min()
+                dt_fim = datas.max()
+                evento_data = dt_inicio.strftime('%d/%m/%Y')
+                evento_hora_inicio = dt_inicio.strftime('%H:%M')
+                evento_hora_fim = dt_fim.strftime('%H:%M')
+                duracao_min = int((dt_fim - dt_inicio).total_seconds() / 60)
                 evento_duracao = f'{duracao_min} min'
+                h = duracao_min // 60
+                m = duracao_min % 60
+                evento_duracao_fmt = f'{h}h{m:02d}min' if h > 0 else f'{m} min'
                 retencao_labels = datas.dt.strftime('%H:%M').tolist()
         if col_usu in totalizado.columns:
             usu = pd.to_numeric(totalizado[col_usu], errors='coerce').fillna(0)
@@ -47,27 +57,33 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
 
     if not evento_duracao and zoom_meta.get('Duração (minutos)'):
         try:
-            evento_duracao = f"{int(float(zoom_meta['Duração (minutos)']))} min"
+            duracao_min = int(float(zoom_meta['Duração (minutos)']))
+            evento_duracao = f'{duracao_min} min'
+            h = duracao_min // 60
+            m = duracao_min % 60
+            evento_duracao_fmt = f'{h}h{m:02d}min' if h > 0 else f'{m} min'
         except (ValueError, TypeError):
             pass
 
-    # --- inscritos ---
+    # --- Inscritos ---
     total_inscritos: Optional[int] = None
     if inscritos is not None and not inscritos.empty:
         total_inscritos = len(inscritos)
 
-    # --- presentes & tempo médio ---
+    # --- Presentes, tempo médio, todos participantes ---
     total_presentes: Optional[int] = None
     tempo_medio_min: Optional[float] = None
     tempo_medio_fmt: Optional[str] = None
     top_participantes: List[Dict] = []
+    todos_participantes: List[Dict] = []
 
     if relatorio is not None and not relatorio.empty:
         col_nome = 'Nome'
+        col_tempo = 'Tempo_Minutos'
+
         if col_nome in relatorio.columns:
             total_presentes = int(relatorio[col_nome].dropna().nunique())
 
-        col_tempo = 'Tempo_Minutos'
         if col_tempo in relatorio.columns:
             tempos = pd.to_numeric(relatorio[col_tempo], errors='coerce').fillna(0)
             media = tempos.mean()
@@ -80,27 +96,36 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
             if col_nome in relatorio.columns:
                 top_df = relatorio[[col_nome, col_tempo]].copy()
                 top_df[col_tempo] = pd.to_numeric(top_df[col_tempo], errors='coerce').fillna(0)
-                top_df = (
+                agrupado = (
                     top_df.groupby(col_nome, as_index=False)[col_tempo]
                     .max()
                     .sort_values(col_tempo, ascending=False)
-                    .head(10)
                 )
                 top_participantes = [
                     {'nome': str(row[col_nome]), 'minutos': round(float(row[col_tempo]), 1)}
-                    for _, row in top_df.iterrows()
+                    for _, row in agrupado.head(10).iterrows()
+                ]
+                todos_participantes = [
+                    {'nome': str(row[col_nome]), 'minutos': round(float(row[col_tempo]), 1)}
+                    for _, row in agrupado.iterrows()
                 ]
 
-    # --- taxa de presença ---
+    # --- Taxa de presença ---
     taxa_presenca: Optional[float] = None
     if total_inscritos and total_presentes:
         taxa_presenca = round(total_presentes / total_inscritos * 100, 1)
 
-    # --- mensagens / chat ---
+    # --- Ausentes ---
+    total_ausentes: Optional[int] = None
+    if total_inscritos is not None and total_presentes is not None:
+        total_ausentes = total_inscritos - total_presentes
+
+    # --- Mensagens / chat ---
     total_mensagens = len(mensagens) if mensagens is not None and not mensagens.empty else 0
     total_chat = len(chat) if chat is not None and not chat.empty else 0
+    total_interacoes = total_mensagens + total_chat
 
-    # --- enquetes ---
+    # --- Enquetes ---
     enquetes: List[Dict] = []
     enquete_keys = sorted([k for k in processed if k.startswith('enquete_') and k.endswith('_processed')])
     for i, key in enumerate(enquete_keys):
@@ -127,7 +152,7 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
             'values': values,
         })
 
-    # --- zoom participantes ---
+    # --- Zoom participantes ---
     zoom_participantes: List[Dict] = []
     if zoom_consol is not None and not zoom_consol.empty:
         col_znome = 'Nome (nome original)'
@@ -141,29 +166,48 @@ def compute_metrics(processed: Dict[str, Any]) -> Dict[str, Any]:
             })
 
     zoom_topico = str(zoom_meta.get('Tópico', '') or zoom_meta.get('Topic', '') or '')
+    zoom_host = str(zoom_meta.get('Anfitrião', '') or zoom_meta.get('Host', '') or '')
 
     return {
+        # Identificação
         'data_emissao': today,
+        'zoom_topico': zoom_topico,
+        'zoom_host': zoom_host,
+        # Temporais
         'evento_data': evento_data,
+        'evento_hora_inicio': evento_hora_inicio,
+        'evento_hora_fim': evento_hora_fim,
         'evento_duracao': evento_duracao,
+        'evento_duracao_fmt': evento_duracao_fmt,
+        # Público
         'total_inscritos': total_inscritos,
         'total_presentes': total_presentes,
+        'total_ausentes': total_ausentes,
         'taxa_presenca': taxa_presenca,
+        # Audiência
         'pico_audiencia': pico_audiencia,
         'hora_pico': hora_pico,
         'tempo_medio_min': tempo_medio_min,
         'tempo_medio_fmt': tempo_medio_fmt,
+        # Engajamento
         'total_mensagens': total_mensagens,
         'total_chat': total_chat,
+        'total_interacoes': total_interacoes,
+        # Participantes
         'top_participantes': top_participantes,
+        'todos_participantes': todos_participantes,
+        # Retenção
         'retencao_labels': retencao_labels,
         'retencao_values': retencao_values,
+        # Enquetes
         'enquetes': enquetes,
+        # Zoom
         'zoom_participantes': zoom_participantes,
-        'zoom_topico': zoom_topico,
+        # Flags
         'has_inscritos': total_inscritos is not None,
         'has_zoom': len(zoom_participantes) > 0,
         'has_mensagens': total_mensagens > 0,
         'has_chat': total_chat > 0,
         'has_enquetes': len(enquetes) > 0,
+        'has_todos_participantes': len(todos_participantes) > 0,
     }
