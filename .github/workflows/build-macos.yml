@@ -1,16 +1,16 @@
 name: Build macOS App
 
 on:
-  # Executar manualmente pelo GitHub
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag do release para publicar o DMG (ex: v1.9.1)'
+        required: false
+        default: ''
 
-  # Ou ao fazer push na branch main
   push:
-    branches: [ main, master ]
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'netpoint_macos.spec'
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -35,37 +35,48 @@ jobs:
 
     - name: Build macOS App
       run: |
-        pyinstaller netpoint_macos.spec --clean
+        pyinstaller netpoint_macos.spec --clean --noconfirm
 
     - name: Create DMG
       run: |
-        # Criar DMG para distribuição fácil
         hdiutil create -volname "Netpoint Report Generator" \
           -srcfolder "dist/Netpoint Report Generator.app" \
           -ov -format UDZO \
           "dist/Netpoint_Report_Generator_macOS.dmg"
 
-    - name: Upload macOS App
+    - name: Upload artifact (backup)
       uses: actions/upload-artifact@v4
       with:
         name: Netpoint-Report-Generator-macOS
-        path: |
-          dist/Netpoint Report Generator.app
-          dist/Netpoint_Report_Generator_macOS.dmg
+        path: dist/Netpoint_Report_Generator_macOS.dmg
         retention-days: 30
 
-  # Job adicional para criar Release (opcional)
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    - name: Determine release tag
+      id: tag
+      run: |
+        if [ "${{ github.event_name }}" = "push" ]; then
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        elif [ -n "${{ github.event.inputs.version }}" ]; then
+          echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=" >> $GITHUB_OUTPUT
+        fi
 
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: Netpoint-Report-Generator-macOS
-        path: dist/
-
-    - name: Display structure
-      run: ls -la dist/
+    - name: Upload DMG to existing release
+      if: steps.tag.outputs.tag != ''
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="${{ steps.tag.outputs.tag }}"
+        # Aguarda até 60s para o release existir (criado manualmente ou por outro job)
+        for i in $(seq 1 12); do
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG encontrado"
+            break
+          fi
+          echo "Aguardando release $TAG... ($i/12)"
+          sleep 5
+        done
+        gh release upload "$TAG" \
+          "dist/Netpoint_Report_Generator_macOS.dmg#Netpoint.Report.Generator.macOS.dmg" \
+          --clobber

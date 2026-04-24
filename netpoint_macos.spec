@@ -1,42 +1,44 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""
-PyInstaller spec file para Netpoint Report Generator - macOS.
-Gera aplicativo .app para macOS.
-"""
 
 import os
 
-# Diretório base do projeto
 BASE_DIR = os.path.dirname(os.path.abspath(SPEC))
+
+extra_datas = []
+config_path = os.path.join(BASE_DIR, 'anthropic_config.json')
+if os.path.exists(config_path):
+    extra_datas.append(('anthropic_config.json', '.'))
 
 a = Analysis(
     ['netpoint_report_generator.py'],
     pathex=[BASE_DIR],
     binaries=[],
     datas=[
-        # Incluir pasta assets (ícones)
         ('assets', 'assets'),
-        # Incluir pasta config
         ('config', 'config'),
-        # Incluir pasta core
         ('core', 'core'),
-        # Incluir pasta ui
         ('ui', 'ui'),
-        # Incluir pasta utils
         ('utils', 'utils'),
-    ],
+        ('visual', 'visual'),
+    ] + extra_datas,
     hiddenimports=[
         'pandas',
         'openpyxl',
         'openpyxl.cell._writer',
         'PIL',
         'tkinter',
+        'packaging',
+        'packaging.version',
+        'anthropic',
+        'httpx',
+        'anyio',
+        'anyio._backends._asyncio',
+        'anyio._backends._trio',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Excluir módulos desnecessários para reduzir tamanho
         'matplotlib',
         'scipy',
         'numpy.random._examples',
@@ -59,13 +61,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # False = sem janela de console (GUI apenas)
+    console=False,
     disable_windowed_traceback=False,
-    argv_emulation=True,  # Necessário para macOS
+    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/icon.png',  # macOS usa PNG ou ICNS
+    icon='assets/icon.png',
 )
 
 coll = COLLECT(
@@ -86,8 +88,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'Netpoint Report Generator',
         'CFBundleDisplayName': 'Netpoint Report Generator',
-        'CFBundleVersion': '1.7.0',
-        'CFBundleShortVersionString': '1.7.0',
+        'CFBundleVersion': '1.9.1',
+        'CFBundleShortVersionString': '1.9.1',
         'NSHighResolutionCapable': 'True',
         'NSRequiresAquaSystemAppearance': 'False',
     },
