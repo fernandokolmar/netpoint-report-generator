@@ -4,6 +4,9 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Dict, List, Optional
+from utils.font_loader import load_inter
+
+_UI_FONT = load_inter()
 
 
 class InsightsEditorWindow:
@@ -50,11 +53,11 @@ class InsightsEditorWindow:
         header.pack(fill=tk.X)
         tk.Label(
             header, text="Revisar Insights gerados pela IA",
-            bg="#3db3f5", fg="white", font=("Segoe UI", 13, "bold")
+            bg="#3db3f5", fg="white", font=(_UI_FONT, 13, "bold")
         ).pack(side=tk.LEFT, padx=16)
         tk.Label(
             header, text="Edite ou regenere cada card antes de finalizar",
-            bg="#3db3f5", fg="white", font=("Segoe UI", 9)
+            bg="#3db3f5", fg="white", font=(_UI_FONT, 9)
         ).pack(side=tk.LEFT)
 
         # Área rolável
@@ -101,7 +104,7 @@ class InsightsEditorWindow:
         frame = tk.LabelFrame(
             self._scroll_frame,
             text=f"  Insight {index + 1}  ",
-            font=("Segoe UI", 9, "bold"),
+            font=(_UI_FONT, 9, "bold"),
             fg="#3d3d6e", padx=10, pady=8, relief=tk.GROOVE
         )
         frame.pack(fill=tk.X, pady=6)
@@ -110,18 +113,18 @@ class InsightsEditorWindow:
         row_top = tk.Frame(frame)
         row_top.pack(fill=tk.X, pady=(0, 6))
 
-        tk.Label(row_top, text="Ícone:", font=("Segoe UI", 9), width=6, anchor="w").pack(side=tk.LEFT)
+        tk.Label(row_top, text="Ícone:", font=(_UI_FONT, 9), width=6, anchor="w").pack(side=tk.LEFT)
         icon_var = tk.StringVar(value=ins.get("icon", "💡"))
-        ttk.Entry(row_top, textvariable=icon_var, width=5, font=("Segoe UI", 12)).pack(side=tk.LEFT, padx=(0, 12))
+        ttk.Entry(row_top, textvariable=icon_var, width=5, font=(_UI_FONT, 12)).pack(side=tk.LEFT, padx=(0, 12))
 
-        tk.Label(row_top, text="Título:", font=("Segoe UI", 9), anchor="w").pack(side=tk.LEFT)
+        tk.Label(row_top, text="Título:", font=(_UI_FONT, 9), anchor="w").pack(side=tk.LEFT)
         title_var = tk.StringVar(value=ins.get("title", ""))
-        ttk.Entry(row_top, textvariable=title_var, font=("Segoe UI", 9)).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Entry(row_top, textvariable=title_var, font=(_UI_FONT, 9)).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Texto do insight
-        tk.Label(frame, text="Texto:", font=("Segoe UI", 9), anchor="w").pack(anchor="w")
+        tk.Label(frame, text="Texto:", font=(_UI_FONT, 9), anchor="w").pack(anchor="w")
         body_text = tk.Text(
-            frame, height=3, wrap=tk.WORD, font=("Segoe UI", 9),
+            frame, height=3, wrap=tk.WORD, font=(_UI_FONT, 9),
             relief=tk.FLAT, bg="#f5f5fb", bd=1,
             highlightbackground="#c0c0d0", highlightthickness=1
         )
@@ -136,14 +139,14 @@ class InsightsEditorWindow:
         regen_frame.pack(fill=tk.X)
 
         tk.Label(
-            regen_frame, text="Orientação:", font=("Segoe UI", 8),
+            regen_frame, text="Orientação:", font=(_UI_FONT, 8),
             fg="#555", bg="#f0f4ff", anchor="w"
         ).pack(side=tk.LEFT, padx=(0, 6))
 
         instrucao_var = tk.StringVar()
         instrucao_entry = ttk.Entry(
             regen_frame, textvariable=instrucao_var,
-            font=("Segoe UI", 9), width=38
+            font=(_UI_FONT, 9), width=38
         )
         instrucao_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
         instrucao_entry.insert(0, "Ex: este dado está errado, foque em...")
@@ -169,7 +172,7 @@ class InsightsEditorWindow:
         status_var = tk.StringVar(value="")
         status_label = tk.Label(
             frame, textvariable=status_var,
-            font=("Segoe UI", 8, "italic"), fg="#777", anchor="w"
+            font=(_UI_FONT, 8, "italic"), fg="#777", anchor="w"
         )
         status_label.pack(anchor="w", pady=(4, 0))
 

@@ -1,10 +1,16 @@
 {
-  "version": "1.9.5",
+  "version": "1.9.6",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.5/Netpoint.Reports.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.5/Netpoint.Reports.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.6/Netpoint.Reports.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.6/Netpoint.Reports.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.6",
+      "notes": [
+        "Interface com fonte Inter — a mesma fonte da identidade visual Netpoint, aplicada em toda a interface do aplicativo."
+      ]
+    },
     {
       "version": "1.9.5",
       "notes": [

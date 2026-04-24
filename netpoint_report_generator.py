@@ -19,7 +19,11 @@ from ui.preview_window import show_preview
 from ui.stats_window import StatsWindow
 from utils.file_history import FileHistory
 from utils.updater import check_for_updates, download_and_apply, get_current_exe, is_running_as_exe
+from utils.font_loader import load_inter
 from config import settings
+
+# Carrega a fonte Inter antes de qualquer widget Tkinter
+UI_FONT = load_inter()
 
 
 class VideoConferenceReportGenerator:
@@ -96,7 +100,7 @@ class VideoConferenceReportGenerator:
         main_frame.rowconfigure(1, weight=1)
 
         # Título
-        title_label = ttk.Label(main_frame, text=settings.APP_NAME, font=('Arial', 16, 'bold'))
+        title_label = ttk.Label(main_frame, text=settings.APP_NAME, font=(UI_FONT, 16, 'bold'))
         title_label.grid(row=0, column=0, pady=(0, 8))
 
         # Notebook (abas)
@@ -219,7 +223,7 @@ class VideoConferenceReportGenerator:
 
         enquetes_header = ttk.Frame(files_frame)
         enquetes_header.grid(row=8, column=0, columnspan=4, sticky=(tk.W, tk.E), padx=5, pady=2)
-        ttk.Label(enquetes_header, text="Enquetes (opcional):", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(enquetes_header, text="Enquetes (opcional):", font=(UI_FONT, 9, 'bold')).pack(side=tk.LEFT)
         ttk.Button(enquetes_header, text="+ Adicionar Enquete",
                    command=self._add_enquete_row).pack(side=tk.LEFT, padx=10)
 
@@ -982,11 +986,11 @@ class VideoConferenceReportGenerator:
         # Cabeçalho
         header = ttk.Frame(win)
         header.grid(row=0, column=0, sticky='ew', padx=20, pady=(18, 0))
-        ttk.Label(header, text="Nova versão disponível!", font=('Arial', 12, 'bold')).pack()
+        ttk.Label(header, text="Nova versão disponível!", font=(UI_FONT, 12, 'bold')).pack()
         ttk.Label(
             header,
             text=f"Versão instalada: {settings.APP_VERSION}    →    Versão nova: {new_version}",
-            font=('Arial', 10)
+            font=(UI_FONT, 10)
         ).pack(pady=(4, 10))
 
         # Notas cumulativas — expande verticalmente
@@ -996,14 +1000,14 @@ class VideoConferenceReportGenerator:
             notes_frame.columnconfigure(0, weight=1)
             notes_frame.rowconfigure(0, weight=1)
 
-            text = tk.Text(notes_frame, wrap=tk.WORD, font=('Arial', 9),
+            text = tk.Text(notes_frame, wrap=tk.WORD, font=(UI_FONT, 9),
                            relief='flat', bg=win.cget('bg'), state='normal')
             scrollbar = ttk.Scrollbar(notes_frame, command=text.yview)
             text.configure(yscrollcommand=scrollbar.set)
             scrollbar.grid(row=0, column=1, sticky='ns')
             text.grid(row=0, column=0, sticky='nsew')
 
-            text.tag_configure('version', font=('Arial', 9, 'bold'), foreground='#2c2c3e', spacing1=6)
+            text.tag_configure('version', font=(UI_FONT, 9, 'bold'), foreground='#2c2c3e', spacing1=6)
             text.tag_configure('note', lmargin1=12, lmargin2=12, spacing1=2)
 
             for entry in notes:
@@ -1029,7 +1033,7 @@ class VideoConferenceReportGenerator:
         ttk.Label(
             footer,
             text="O aplicativo fechará e reabrirá automaticamente após a atualização.",
-            font=('Arial', 8),
+            font=(UI_FONT, 8),
             foreground='gray'
         ).grid(row=0, column=0, pady=(0, 8))
 
@@ -1055,13 +1059,13 @@ class VideoConferenceReportGenerator:
         win.resizable(False, False)
         win.grab_set()
 
-        ttk.Label(win, text="Baixando atualização, aguarde...", font=('Arial', 10)).pack(pady=(18, 6))
+        ttk.Label(win, text="Baixando atualização, aguarde...", font=(UI_FONT, 10)).pack(pady=(18, 6))
 
         progress = ttk.Progressbar(win, length=320, mode='determinate', maximum=100)
         progress.pack(pady=4)
 
         status_var = tk.StringVar(value="Conectando...")
-        ttk.Label(win, textvariable=status_var, font=('Arial', 8)).pack()
+        ttk.Label(win, textvariable=status_var, font=(UI_FONT, 8)).pack()
 
         def on_progress(pct: int) -> None:
             self.root.after(0, lambda: progress.configure(value=pct))

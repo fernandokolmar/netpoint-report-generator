@@ -9,6 +9,9 @@ from tkinter import ttk
 import os
 import subprocess
 import platform
+from utils.font_loader import load_inter
+
+_UI_FONT = load_inter()
 
 
 class StatsWindow:
@@ -64,7 +67,7 @@ class StatsWindow:
         success_label = ttk.Label(
             success_frame,
             text="✓",
-            font=('Arial', 48, 'bold'),
+            font=(_UI_FONT, 48, 'bold'),
             foreground='green'
         )
         success_label.pack()
@@ -72,7 +75,7 @@ class StatsWindow:
         ttk.Label(
             success_frame,
             text="Relatório gerado com sucesso!",
-            font=('Arial', 14, 'bold')
+            font=(_UI_FONT, 14, 'bold')
         ).pack()
 
         # Informações do arquivo
@@ -99,7 +102,7 @@ class StatsWindow:
         ttk.Label(
             file_frame,
             text=f"📄 {filename}",
-            font=('Arial', 10, 'bold')
+            font=(_UI_FONT, 10, 'bold')
         ).pack(anchor=tk.W)
 
         # Caminho completo (truncado se muito longo)

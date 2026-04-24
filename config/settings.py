@@ -4,7 +4,7 @@ Configurações gerais do Netpoint Report Generator.
 
 # Informações da aplicação
 APP_NAME = "Netpoint Reports"
-APP_VERSION = "1.9.5"
+APP_VERSION = "1.9.6"
 APP_AUTHOR = "Netpoint"
 
 # Configurações CSV
