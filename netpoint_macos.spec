@@ -56,7 +56,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Netpoint Report Generator',
+    name='Netpoint Reports',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -77,17 +77,17 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Netpoint Report Generator',
+    name='Netpoint Reports',
 )
 
 app = BUNDLE(
     coll,
-    name='Netpoint Report Generator.app',
+    name='Netpoint Reports.app',
     icon='assets/icon.png',
     bundle_identifier='com.netpoint.reportgenerator',
     info_plist={
-        'CFBundleName': 'Netpoint Report Generator',
-        'CFBundleDisplayName': 'Netpoint Report Generator',
+        'CFBundleName': 'Netpoint Reports',
+        'CFBundleDisplayName': 'Netpoint Reports',
         'CFBundleVersion': '1.9.1',
         'CFBundleShortVersionString': '1.9.1',
         'NSHighResolutionCapable': 'True',

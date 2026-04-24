@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.7.0
+# Netpoint Reports v1.9.4
 
 Aplicação desenvolvida pela **Netpoint** para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -219,5 +219,5 @@ App Estatisticas/
 ---
 
 **Desenvolvido por**: Netpoint  
-**Versão**: 1.7.0  
+**Versão**: 1.9.4  
 **Última atualização**: 24/04/2026

@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.6.0
+# Netpoint Reports v1.9.4
 
 Aplicação para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -102,7 +102,7 @@ O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
 
 ### Opção 1: Executável (Recomendado para Produção)
 
-1. Copie o arquivo `Netpoint Report Generator.exe` para o computador
+1. Copie o arquivo `Netpoint Reports.exe` para o computador
 2. Dê duplo clique para executar
 3. Não precisa de instalação adicional
 
@@ -151,7 +151,7 @@ App Estatisticas/
 │   ├── icon.ico                  # Ícone Windows
 │   └── icon.png                  # Ícone PNG
 ├── dist/
-│   └── Netpoint Report Generator.exe  # Executável
+│   └── Netpoint Reports.exe  # Executável
 └── docs/
     └── README.md                 # Esta documentação
 ```
@@ -207,7 +207,7 @@ App Estatisticas/
 - Build automático para macOS via GitHub Actions
 
 ### v1.0.0 (2025-02-03)
-- Renomeado para "Netpoint Report Generator"
+- Renomeado para "Netpoint Reports"
 - Adicionado ícone personalizado da Netpoint
 - Gráfico de retenção com:
   - Linha azul sólida
@@ -237,5 +237,5 @@ Para problemas ou sugestões, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Desenvolvido por**: Netpoint
-**Versão**: 1.6.0
-**Última atualização**: 10/04/2026
+**Versão**: 1.9.4
+**Última atualização**: 24/04/2026

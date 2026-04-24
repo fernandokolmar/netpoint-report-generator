@@ -1,5 +1,5 @@
 """
-Auto-updater para Netpoint Report Generator. Suporta Windows e macOS.
+Auto-updater para Netpoint Reports. Suporta Windows e macOS.
 
 Fluxo Windows:
 1. Consulta version.json no GitHub
@@ -168,7 +168,7 @@ def _download_and_apply_windows(
         logger = get_logger()
         try:
             tmp_dir = tempfile.gettempdir()
-            tmp_exe = os.path.join(tmp_dir, "NetpointReportGenerator_update.exe")
+            tmp_exe = os.path.join(tmp_dir, "NetpointReports_update.exe")
             bat_path = os.path.join(tmp_dir, "netpoint_update.bat")
 
             logger.info(f"[Windows] Baixando de {download_url}")
@@ -243,7 +243,7 @@ def _download_and_apply_macos(
         mount_point = None
         try:
             tmp_dir = tempfile.gettempdir()
-            tmp_dmg = os.path.join(tmp_dir, "NetpointReportGenerator_update.dmg")
+            tmp_dmg = os.path.join(tmp_dir, "NetpointReports_update.dmg")
             sh_path = os.path.join(tmp_dir, "netpoint_update.sh")
             mount_point = os.path.join(tmp_dir, "NetpointUpdate_mnt")
 

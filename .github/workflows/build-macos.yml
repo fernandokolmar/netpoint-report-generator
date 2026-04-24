@@ -41,16 +41,16 @@ jobs:
 
     - name: Create DMG
       run: |
-        hdiutil create -volname "Netpoint Report Generator" \
-          -srcfolder "dist/Netpoint Report Generator.app" \
+        hdiutil create -volname "Netpoint Reports" \
+          -srcfolder "dist/Netpoint Reports.app" \
           -ov -format UDZO \
-          "dist/Netpoint_Report_Generator_macOS.dmg"
+          "dist/Netpoint_Reports_macOS.dmg"
 
     - name: Upload artifact (backup)
       uses: actions/upload-artifact@v4
       with:
-        name: Netpoint-Report-Generator-macOS
-        path: dist/Netpoint_Report_Generator_macOS.dmg
+        name: Netpoint-Reports-macOS
+        path: dist/Netpoint_Reports_macOS.dmg
         retention-days: 30
 
     - name: Determine release tag
@@ -80,5 +80,5 @@ jobs:
           sleep 5
         done
         gh release upload "$TAG" \
-          "dist/Netpoint_Report_Generator_macOS.dmg#Netpoint.Report.Generator.macOS.dmg" \
+          "dist/Netpoint_Reports_macOS.dmg#Netpoint.Reports.macOS.dmg" \
           --clobber

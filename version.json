@@ -1,10 +1,16 @@
 {
-  "version": "1.9.3",
+  "version": "1.9.4",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.3/Netpoint.Report.Generator.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.3/Netpoint.Report.Generator.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.4/Netpoint.Reports.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.4/Netpoint.Reports.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.4",
+      "notes": [
+        "Aplicativo renomeado para Netpoint Reports."
+      ]
+    },
     {
       "version": "1.9.3",
       "notes": [

@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file para Netpoint Report Generator.
+PyInstaller spec file para Netpoint Reports.
 Gera executável Windows com ícone personalizado.
 """
 
@@ -66,7 +66,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Netpoint Report Generator',
+    name='Netpoint Reports',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
