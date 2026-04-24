@@ -1010,7 +1010,7 @@ class VideoConferenceReportGenerator:
         # Rodapé
         ttk.Label(
             win,
-            text="O aplicativo será reiniciado automaticamente após a atualização.",
+            text="O aplicativo fechará e reabrirá automaticamente após a atualização.",
             font=('Arial', 8),
             foreground='gray'
         ).pack(pady=(0, 8))

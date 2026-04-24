@@ -148,26 +148,43 @@ def download_and_apply(
 
             # Escrever script .bat que:
             # 1. Aguarda o processo atual terminar (loop até não existir)
-            # 2. Copia o novo exe sobre o antigo
-            # 3. Relança o app
-            # 4. Se deleta
+            # 2. Aguarda 3s extras para o PyInstaller limpar a pasta _MEI
+            # 3. Move/copia o novo exe sobre o antigo
+            # 4. Relança o app e aguarda sua inicialização completa
+            # 5. Se deleta
             bat_content = f"""@echo off
+setlocal
+
+set "NEW_EXE={tmp_exe}"
+set "CUR_EXE={current_exe}"
+set "TARGET_PID={os.getpid()}"
+
 :waitloop
-tasklist /FI "PID eq {os.getpid()}" 2>NUL | find /I "{os.getpid()}" >NUL
+tasklist /FI "PID eq %TARGET_PID%" 2>NUL | find /I "%TARGET_PID%" >NUL
 if not errorlevel 1 (
     timeout /t 1 /nobreak >NUL
     goto waitloop
 )
-timeout /t 1 /nobreak >NUL
-copy /Y "{tmp_exe}" "{current_exe}" >NUL
+
+rem Aguarda o PyInstaller terminar de limpar a pasta _MEI
+timeout /t 3 /nobreak >NUL
+
+rem Tenta mover (renomeia atomicamente se na mesma unidade)
+move /Y "%NEW_EXE%" "%CUR_EXE%" >NUL 2>&1
 if errorlevel 1 (
-    echo Falha ao substituir o executavel. Tente manualmente.
-    pause
-    exit /b 1
+    rem Fallback para copy se move falhar (unidades diferentes)
+    copy /Y "%NEW_EXE%" "%CUR_EXE%" >NUL 2>&1
+    if errorlevel 1 (
+        echo Falha ao substituir o executavel. Tente manualmente.
+        pause
+        exit /b 1
+    )
+    del "%NEW_EXE%" >NUL 2>&1
 )
-del "{tmp_exe}" >NUL 2>&1
-start "" "{current_exe}"
+
+start "" "%CUR_EXE%"
 del "%~f0"
+endlocal
 """
             with open(bat_path, 'w', encoding='utf-8') as f:
                 f.write(bat_content)
