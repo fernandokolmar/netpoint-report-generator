@@ -400,8 +400,8 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
       plugins: {{
         legend: {{ display: false }},
         tooltip: {{
-          mode: 'index',
-          intersect: false,
+          mode: 'nearest',
+          intersect: true,
           position: 'cursor',
           yAlign: 'top',
           xAlign: 'center',
