@@ -73,6 +73,7 @@ h2 { font-size:13px; font-weight:700; color:var(--np-dark); border-left:4px soli
 
 /* ── CHART / TABLE CARDS ── */
 .chart-card { background:var(--card-bg); border-radius:10px; padding:16px; box-shadow:0 2px 8px rgba(100,80,200,.08); margin-top:10px; }
+.chart-hint { font-size:10px; color:var(--muted); margin-top:8px; text-align:center; opacity:.7; }
 .chart-wrap { position:relative; height:240px; }
 .chart-wrap-sm { position:relative; height:180px; }
 .table-card { background:var(--card-bg); border-radius:10px; padding:0; box-shadow:0 2px 8px rgba(100,80,200,.08); overflow:hidden; }
@@ -251,6 +252,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
             '<h2>Retenção de Audiência ao Longo do Evento</h2>'
             '<div class="chart-card">'
             '<div class="chart-wrap"><canvas id="chartRetencao"></canvas></div>'
+            '<p class="chart-hint">💡 Passe o mouse sobre o gráfico para ver o número de usuários em cada momento</p>'
             '</div>'
             '</section>'
         )
