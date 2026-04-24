@@ -962,13 +962,17 @@ class VideoConferenceReportGenerator:
             )
         )
 
-    def _on_update_available(self, new_version: str, download_url: str, notes: list) -> None:
+    def _on_update_available(self, new_version: str, download_url, notes: list) -> None:
         """Exibe diálogo com release notes cumulativas de todas as versões que o usuário não tem."""
+        # Garante que download_url é string mesmo se vier como dict (versão legada do app)
+        from utils.updater import _resolve_download_url
+        download_url = _resolve_download_url(download_url)
+
         win = tk.Toplevel(self.root)
         win.title("Atualização Disponível")
-        win.geometry("500x420")
+        win.geometry("520x480")
         win.resizable(True, True)
-        win.minsize(420, 320)
+        win.minsize(460, 400)
         win.grab_set()
 
         # Cabeçalho
@@ -979,10 +983,10 @@ class VideoConferenceReportGenerator:
             font=('Arial', 10)
         ).pack(pady=(0, 10))
 
-        # Notas cumulativas por versão
+        # Notas cumulativas por versão — ocupa o espaço disponível
         if notes:
             notes_frame = ttk.LabelFrame(win, text="O que há de novo", padding="10")
-            notes_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
+            notes_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 8))
 
             text = tk.Text(notes_frame, wrap=tk.WORD, font=('Arial', 9),
                            relief='flat', bg=win.cget('bg'), state='normal')
@@ -995,7 +999,6 @@ class VideoConferenceReportGenerator:
             text.tag_configure('note', lmargin1=12, lmargin2=12, spacing1=2)
 
             for entry in notes:
-                # entry pode ser dict {version, notes} ou str (formato legado)
                 if isinstance(entry, dict):
                     v = entry.get('version', '')
                     entry_notes = entry.get('notes', [])
@@ -1007,16 +1010,19 @@ class VideoConferenceReportGenerator:
 
             text.configure(state='disabled')
 
-        # Rodapé
+        # Rodapé e botões — sempre visíveis, fora do expand
+        footer_frame = ttk.Frame(win)
+        footer_frame.pack(fill=tk.X, padx=20, pady=(4, 14))
+
         ttk.Label(
-            win,
+            footer_frame,
             text="O aplicativo fechará e reabrirá automaticamente após a atualização.",
             font=('Arial', 8),
             foreground='gray'
         ).pack(pady=(0, 8))
 
-        btn_frame = ttk.Frame(win)
-        btn_frame.pack(pady=(0, 14))
+        btn_frame = ttk.Frame(footer_frame)
+        btn_frame.pack()
 
         def on_yes():
             win.destroy()

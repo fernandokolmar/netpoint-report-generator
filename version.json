@@ -1,10 +1,17 @@
 {
-  "version": "1.9.2",
+  "version": "1.9.3",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.2/Netpoint.Report.Generator.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.2/Netpoint.Report.Generator.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.3/Netpoint.Report.Generator.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.3/Netpoint.Report.Generator.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.3",
+      "notes": [
+        "Correção: botão 'Atualizar agora' sempre visível na janela de atualização.",
+        "Correção: erro ao baixar atualização em versões antigas do app (formato de URL incompatível)."
+      ]
+    },
     {
       "version": "1.9.2",
       "notes": [

@@ -131,9 +131,13 @@ def download_and_apply(
         _download_and_apply_windows(download_url, current_exe, on_progress, on_error)
 
 
-def _download_file(url: str, dest: str,
+def _download_file(url, dest: str,
                    on_progress: Optional[Callable[[int], None]]) -> int:
     """Baixa url para dest, reportando progresso. Retorna bytes baixados."""
+    # Defesa: garante que url é string mesmo se vier como dict
+    url = _resolve_download_url(url)
+    if not url:
+        raise ValueError("URL de download não disponível para esta plataforma")
     req = urllib.request.urlopen(url, timeout=120)
     total = int(req.headers.get('Content-Length', 0))
     downloaded = 0
