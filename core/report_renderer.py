@@ -369,6 +369,9 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         script_lines.append(f"""
 (function(){{
   var picoIdx = {pico_idx};
+  Chart.Tooltip.positioners.cursor = function(_, eventPos) {{
+    return {{ x: eventPos.x, y: eventPos.y }};
+  }};
   new Chart(document.getElementById('chartRetencao'), {{
     type: 'line',
     data: {{
@@ -399,7 +402,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         tooltip: {{
           mode: 'index',
           intersect: false,
-          position: 'average',
+          position: 'cursor',
           yAlign: 'top',
           xAlign: 'center',
           callbacks: {{
