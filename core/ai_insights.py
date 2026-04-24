@@ -76,6 +76,62 @@ def _montar_resumo(metrics: Dict[str, Any]) -> str:
     return "\n".join(linhas)
 
 
+def regerar_insight(
+    metrics: Dict[str, Any],
+    api_key: str,
+    insight_atual: Dict,
+    instrucao: str,
+) -> Dict:
+    """
+    Regera apenas um insight com base em uma instrução do usuário.
+    Retorna um único dict {icon, title, body}.
+    """
+    import anthropic
+
+    resumo = _montar_resumo(metrics)
+    insight_json = json.dumps(insight_atual, ensure_ascii=False)
+
+    prompt = f"""Você é um analista de dados especializado em eventos online e videoconferências corporativas.
+
+Abaixo estão os dados de um evento e um insight gerado anteriormente que precisa ser corrigido ou melhorado.
+
+DADOS DO EVENTO:
+{resumo}
+
+INSIGHT ATUAL:
+{insight_json}
+
+INSTRUÇÃO DO USUÁRIO:
+{instrucao}
+
+Gere um novo insight levando em conta a instrução acima.
+Retorne APENAS um JSON válido com esta estrutura exata, sem texto antes ou depois:
+{{"icon": "📈", "title": "Título curto", "body": "Texto do insight com dados específicos (2-3 frases)."}}
+
+Regras:
+- Emoji relevante para o tema do novo insight
+- Título curto (máx 5 palavras)
+- Corpo com números reais dos dados fornecidos
+- Linguagem profissional em português brasileiro
+"""
+
+    client = anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    raw = message.content[0].text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip()
+
+    return json.loads(raw)
+
+
 def gerar_insights_claude(metrics: Dict[str, Any], api_key: str) -> List[Dict]:
     """
     Envia resumo agregado ao Claude e retorna lista de insights.

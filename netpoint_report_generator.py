@@ -875,6 +875,7 @@ class VideoConferenceReportGenerator:
     def _on_insights_ready(self, metrics, insights) -> None:
         """Volta para a thread principal após receber os insights — abre o editor."""
         from ui.insights_editor import InsightsEditorWindow
+        from core.ai_insights import load_api_key
 
         self.smart_report_button.config(state='normal', text='Gerar Relatório Inteligente')
 
@@ -889,6 +890,8 @@ class VideoConferenceReportGenerator:
         InsightsEditorWindow(
             parent=self.root,
             insights=insights,
+            metrics=metrics,
+            api_key=load_api_key(),
             on_confirm=self._ask_save_and_finalize,
             on_cancel=lambda: self.log("Geração cancelada pelo usuário."),
         )
