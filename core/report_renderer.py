@@ -32,7 +32,7 @@ _CSS = """
   --card-bg: #ffffff; --text: #1e1e2e;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 12px; line-height: 1.5; }
+body { font-family: 'Nunito', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 12px; line-height: 1.5; }
 
 /* ── HEADER ── */
 .header { background: var(--np-grad); color: #fff; padding: 28px 40px 22px; position: relative; overflow: hidden; }
@@ -153,13 +153,9 @@ def _table(headers: List[str], rows: List[List[Any]], ranked: bool = False) -> s
     th = ''.join(f'<th>{_e(h)}</th>' for h in headers)
     trs = ''
     for i, row in enumerate(rows):
-        cells = ''
-        for j, c in enumerate(row):
-            if ranked and j == 0:
-                cells += f'<td class="rank">#{i+1}</td>'
-            else:
-                cells += f'<td>{_e(c)}</td>'
-        trs += f'<tr>{cells}</tr>'
+        rank_cell = f'<td class="rank">#{i+1}</td>' if ranked else ''
+        cells = ''.join(f'<td>{_e(c)}</td>' for c in row)
+        trs += f'<tr>{rank_cell}{cells}</tr>'
     return f'<table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table>'
 
 
@@ -194,8 +190,6 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         header_meta_parts.append(f'<span>🕐 {_e(horario)}</span>')
     if evento_duracao_fmt:
         header_meta_parts.append(f'<span>⏱ {_e(evento_duracao_fmt)}</span>')
-    if zoom_host:
-        header_meta_parts.append(f'<span>🎤 {_e(zoom_host)}</span>')
     header_meta_parts.append(f'<span>📄 Emitido em {_e(data_emissao)}</span>')
 
     sections = []
@@ -209,8 +203,6 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         overview_items.append(_overview_item('Horário', horario))
     if evento_duracao_fmt:
         overview_items.append(_overview_item('Duração total', evento_duracao_fmt, accent=True))
-    if zoom_host:
-        overview_items.append(_overview_item('Apresentador / Anfitrião', zoom_host))
     if data_emissao:
         overview_items.append(_overview_item('Relatório emitido em', data_emissao))
 
@@ -352,7 +344,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
 
     # ── Script Chart.js ──────────────────────────────────────────────────
     script_lines = [
-        "Chart.defaults.font.family = \"'Segoe UI', Arial, sans-serif\";",
+        "Chart.defaults.font.family = \"'Nunito', 'Segoe UI', Arial, sans-serif\";",
         "Chart.defaults.font.size = 11;",
     ]
 
@@ -407,6 +399,8 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Relatório — {_e(evento_nome)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>{_CSS}</style>
 </head>
