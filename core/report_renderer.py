@@ -351,52 +351,26 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
     ]
 
     if rlabels and rvalues:
-        # Índice do pico para destacar visualmente no gráfico
         pico_idx = rvalues.index(max(rvalues)) if rvalues else 0
-        # Ponto do pico: sempre visível, laranja, maior
-        # Demais pontos: invisíveis em repouso, aparecem discretos (branco) ao hover
+        # Pico: sempre visível em laranja. Demais: invisíveis em repouso,
+        # aparecem com bolinha branca ao hover (hitRadius alto facilita encontrar)
         point_radii = [0] * len(rvalues)
         point_radii[pico_idx] = 7
-        point_hover_radii = [4] * len(rvalues)
-        point_hover_radii[pico_idx] = 8
-        point_colors = ['rgba(255,255,255,0)'] * len(rvalues)
+        point_hover_radii = [6] * len(rvalues)
+        point_hover_radii[pico_idx] = 9
+        point_colors = ['rgba(0,0,0,0)'] * len(rvalues)
         point_colors[pico_idx] = '#f39c12'
-        point_hover_colors = ['rgba(255,255,255,0.9)'] * len(rvalues)
+        point_hover_colors = ['rgba(255,255,255,0.95)'] * len(rvalues)
         point_hover_colors[pico_idx] = '#f39c12'
         point_border_colors = ['rgba(0,0,0,0)'] * len(rvalues)
         point_border_colors[pico_idx] = '#ffffff'
         point_hover_border_colors = ['#7b4ff5'] * len(rvalues)
         point_hover_border_colors[pico_idx] = '#ffffff'
-        pico_label = rlabels[pico_idx] if pico_idx < len(rlabels) else ''
-        # Plugin inline: ao entrar/sair do gráfico, mostra/esconde todas as bolinhas de uma vez
         script_lines.append(f"""
 (function(){{
   var picoIdx = {pico_idx};
-  var allDotsPlugin = {{
-    id: 'allDots',
-    afterDraw: function(chart) {{
-      if (!chart._showAllDots) return;
-      var ctx = chart.ctx;
-      var ds = chart.data.datasets[0];
-      var meta = chart.getDatasetMeta(0);
-      meta.data.forEach(function(point, i) {{
-        if (i === picoIdx) return; // pico já é desenhado pelo Chart.js
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 3.5, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(255,255,255,0.88)';
-        ctx.strokeStyle = '#7b4ff5';
-        ctx.lineWidth = 1.5;
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      }});
-    }}
-  }};
-  var canvas = document.getElementById('chartRetencao');
-  var chartRetencao = new Chart(canvas, {{
+  new Chart(document.getElementById('chartRetencao'), {{
     type: 'line',
-    plugins: [allDotsPlugin],
     data: {{
       labels: {json.dumps(rlabels, ensure_ascii=False)},
       datasets: [{{
@@ -407,6 +381,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         fill: true,
         pointRadius: {json.dumps(point_radii)},
         pointHoverRadius: {json.dumps(point_hover_radii)},
+        pointHitRadius: 20,
         pointBackgroundColor: {json.dumps(point_colors)},
         pointHoverBackgroundColor: {json.dumps(point_hover_colors)},
         pointBorderColor: {json.dumps(point_border_colors)},
@@ -419,9 +394,6 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
     options: {{
       responsive: true,
       maintainAspectRatio: false,
-      onHover: function(evt, active, chart) {{
-        chart._showAllDots = evt.type !== 'mouseout';
-      }},
       plugins: {{
         legend: {{ display: false }},
         tooltip: {{
@@ -440,10 +412,6 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         y: {{ ticks: {{ color: '#888' }}, grid: {{ color: 'rgba(0,0,0,0.05)' }} }}
       }}
     }}
-  }});
-  canvas.addEventListener('mouseleave', function() {{
-    chartRetencao._showAllDots = false;
-    chartRetencao.draw();
   }});
 }})();
 """)
