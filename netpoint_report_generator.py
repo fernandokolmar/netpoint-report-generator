@@ -18,6 +18,7 @@ from core.exceptions import PRSAException
 from ui.preview_window import show_preview
 from ui.stats_window import StatsWindow
 from utils.file_history import FileHistory
+from utils.updater import check_for_updates, download_and_apply, get_current_exe, is_running_as_exe
 from config import settings
 
 
@@ -63,6 +64,10 @@ class VideoConferenceReportGenerator:
 
         self.create_widgets()
         self.create_menu()
+
+        # Verificar atualizações em background (apenas quando rodando como .exe)
+        if is_running_as_exe():
+            self.root.after(2000, self._check_for_updates)
 
     def _set_app_icon(self) -> None:
         """Configura o ícone da aplicação."""
@@ -833,6 +838,69 @@ class VideoConferenceReportGenerator:
         self.process_button.config(state='normal')
         self.log(f"Erro: {message}")
         messagebox.showerror(title, message)
+
+
+    # -------------------------------------------------------------------------
+    # Auto-update
+    # -------------------------------------------------------------------------
+
+    def _check_for_updates(self) -> None:
+        """Dispara verificação de atualização em background."""
+        check_for_updates(
+            current_version=settings.APP_VERSION,
+            on_update_available=lambda v, url: self.root.after(
+                0, self._on_update_available, v, url
+            )
+        )
+
+    def _on_update_available(self, new_version: str, download_url: str) -> None:
+        """Exibe diálogo de nova versão disponível."""
+        answer = messagebox.askyesno(
+            "Atualização Disponível",
+            f"Uma nova versão está disponível!\n\n"
+            f"Versão atual: {settings.APP_VERSION}\n"
+            f"Nova versão:  {new_version}\n\n"
+            f"Deseja atualizar agora?\n"
+            f"O aplicativo será reiniciado automaticamente após a atualização.",
+            icon='info'
+        )
+        if answer:
+            self._start_update(download_url)
+
+    def _start_update(self, download_url: str) -> None:
+        """Abre janela de progresso e inicia o download da atualização."""
+        win = tk.Toplevel(self.root)
+        win.title("Atualizando...")
+        win.geometry("380x120")
+        win.resizable(False, False)
+        win.grab_set()
+
+        ttk.Label(win, text="Baixando atualização, aguarde...", font=('Arial', 10)).pack(pady=(18, 6))
+
+        progress = ttk.Progressbar(win, length=320, mode='determinate', maximum=100)
+        progress.pack(pady=4)
+
+        status_var = tk.StringVar(value="Conectando...")
+        ttk.Label(win, textvariable=status_var, font=('Arial', 8)).pack()
+
+        def on_progress(pct: int) -> None:
+            self.root.after(0, lambda: progress.configure(value=pct))
+            self.root.after(0, lambda: status_var.set(f"{pct}% concluído"))
+
+        def on_error(msg: str) -> None:
+            win.destroy()
+            messagebox.showerror(
+                "Erro na Atualização",
+                f"Não foi possível concluir a atualização:\n\n{msg}\n\n"
+                f"Tente novamente mais tarde ou atualize manualmente."
+            )
+
+        download_and_apply(
+            download_url=download_url,
+            current_exe=get_current_exe(),
+            on_progress=on_progress,
+            on_error=on_error
+        )
 
 
 def main():
