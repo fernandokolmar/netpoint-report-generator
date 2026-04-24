@@ -182,7 +182,15 @@ class InsightsEditorWindow:
                 self._regerar_card(i, iv, ie, sv, icon, title, body)
             )
         )
-        regen_btn.pack(side=tk.LEFT)
+        regen_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+        # Botão Remover
+        remove_btn = ttk.Button(
+            regen_frame,
+            text="✕ Remover",
+            command=lambda i=index, f=frame: self._remover_card(i, f)
+        )
+        remove_btn.pack(side=tk.LEFT)
 
         entry = {
             "icon": icon_var,
@@ -190,6 +198,8 @@ class InsightsEditorWindow:
             "body": body_text,
             "regen_btn": regen_btn,
             "status_var": status_var,
+            "removed": False,
+            "frame": frame,
         }
         self._entries.append(entry)
 
@@ -236,6 +246,16 @@ class InsightsEditorWindow:
 
         threading.Thread(target=_run, daemon=True).start()
 
+    def _remover_card(self, index: int, frame: tk.LabelFrame) -> None:
+        self._entries[index]["removed"] = True
+        frame.destroy()
+        # Renumera os títulos dos cards restantes
+        pos = 1
+        for entry in self._entries:
+            if not entry.get("removed") and entry["frame"].winfo_exists():
+                entry["frame"].config(text=f"  Insight {pos}  ")
+                pos += 1
+
     def _apply_regen(self, index: int, novo: Dict, status_var: tk.StringVar) -> None:
         entry = self._entries[index]
         entry["icon"].set(novo.get("icon", "💡"))
@@ -257,6 +277,8 @@ class InsightsEditorWindow:
     def _confirm(self) -> None:
         insights = []
         for entry in self._entries:
+            if entry.get("removed"):
+                continue
             insights.append({
                 "icon": entry["icon"].get().strip(),
                 "title": entry["title"].get().strip(),

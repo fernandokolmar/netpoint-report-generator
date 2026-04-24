@@ -349,6 +349,15 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
     ]
 
     if rlabels and rvalues:
+        # Índice do pico para destacar visualmente no gráfico
+        pico_idx = rvalues.index(max(rvalues)) if rvalues else 0
+        point_radii = [0] * len(rvalues)
+        point_radii[pico_idx] = 7
+        point_colors = ['rgba(0,0,0,0)'] * len(rvalues)
+        point_colors[pico_idx] = '#f39c12'
+        point_border_colors = ['rgba(0,0,0,0)'] * len(rvalues)
+        point_border_colors[pico_idx] = '#ffffff'
+        pico_label = rlabels[pico_idx] if pico_idx < len(rlabels) else ''
         script_lines.append(
             f"new Chart(document.getElementById('chartRetencao'), {{"
             f"type:'line',"
@@ -356,11 +365,19 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
             f"labels:{json.dumps(rlabels, ensure_ascii=False)},"
             f"datasets:[{{data:{json.dumps(rvalues)},"
             f"borderColor:'#7b4ff5',backgroundColor:'rgba(123,79,245,0.08)',"
-            f"tension:0.4,fill:true,pointRadius:0,borderWidth:2.5}}]"
+            f"tension:0.4,fill:true,"
+            f"pointRadius:{json.dumps(point_radii)},"
+            f"pointBackgroundColor:{json.dumps(point_colors)},"
+            f"pointBorderColor:{json.dumps(point_border_colors)},"
+            f"pointBorderWidth:2,"
+            f"borderWidth:2.5}}]"
             f"}},"
             f"options:{{responsive:true,maintainAspectRatio:false,"
             f"plugins:{{legend:{{display:false}},"
-            f"tooltip:{{callbacks:{{label:function(c){{return c.parsed.y+' usuários'}}}}}}}},"
+            f"tooltip:{{callbacks:{{label:function(c){{"
+            f"var suffix=c.dataIndex==={pico_idx}?' ★ Pico':'';"
+            f"return c.parsed.y+' usuários'+suffix;"
+            f"}}}}}}}},"
             f"scales:{{x:{{ticks:{{maxTicksLimit:12,color:'#888'}},grid:{{display:false}}}},"
             f"y:{{ticks:{{color:'#888'}},grid:{{color:'rgba(0,0,0,0.05)'}}}}}}}}"
             f"}});"
