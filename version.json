@@ -1,10 +1,16 @@
 {
-  "version": "1.9.7",
+  "version": "1.9.8",
   "download_url": {
-    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.7/Netpoint.Reports.exe",
-    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.7/Netpoint.Reports.macOS.dmg"
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.8/Netpoint.Reports.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.8/Netpoint.Reports.macOS.dmg"
   },
   "history": [
+    {
+      "version": "1.9.8",
+      "notes": [
+        "Versão exibida na tela principal do aplicativo."
+      ]
+    },
     {
       "version": "1.9.7",
       "notes": [

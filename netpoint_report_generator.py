@@ -101,7 +101,14 @@ class VideoConferenceReportGenerator:
 
         # Título
         title_label = ttk.Label(main_frame, text=settings.APP_NAME, font=(UI_FONT, 16, 'bold'))
-        title_label.grid(row=0, column=0, pady=(0, 8))
+        title_label.grid(row=0, column=0, pady=(0, 2))
+
+        ttk.Label(
+            main_frame,
+            text=f"v{settings.APP_VERSION}",
+            font=(UI_FONT, 8),
+            foreground='gray'
+        ).grid(row=0, column=0, sticky='e', padx=4)
 
         # Notebook (abas)
         self.notebook = ttk.Notebook(main_frame)
