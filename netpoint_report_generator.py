@@ -763,7 +763,6 @@ class VideoConferenceReportGenerator:
             'inscritos_zoom': ''
         }
         self.smart_report_button.config(state='disabled')
-        self.controller.clear_cache()
         self.log("Todos os campos foram limpos.")
 
     def show_file_preview(self, file_type: str) -> None:
@@ -829,6 +828,8 @@ class VideoConferenceReportGenerator:
             return
 
         self.process_button.config(state='disabled')
+        self.smart_report_button.config(state='disabled')
+        self.controller.clear_cache()
         self.progress_bar.start(10)
 
         thread = threading.Thread(
