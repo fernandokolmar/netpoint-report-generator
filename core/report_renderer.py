@@ -32,7 +32,7 @@ _CSS = """
   --card-bg: #ffffff; --text: #1e1e2e;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Nunito', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 12px; line-height: 1.5; }
+body { font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 12px; line-height: 1.5; }
 
 /* ── HEADER ── */
 .header { background: var(--np-grad); color: #fff; padding: 28px 40px 22px; position: relative; overflow: hidden; }
@@ -344,7 +344,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
 
     # ── Script Chart.js ──────────────────────────────────────────────────
     script_lines = [
-        "Chart.defaults.font.family = \"'Nunito', 'Segoe UI', Arial, sans-serif\";",
+        "Chart.defaults.font.family = \"'Inter', 'Segoe UI', Arial, sans-serif\";",
         "Chart.defaults.font.size = 11;",
     ]
 
@@ -400,7 +400,7 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Relatório — {_e(evento_nome)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>{_CSS}</style>
 </head>
