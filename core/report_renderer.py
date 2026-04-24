@@ -399,6 +399,9 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
         tooltip: {{
           mode: 'index',
           intersect: false,
+          position: 'average',
+          yAlign: 'top',
+          xAlign: 'center',
           callbacks: {{
             label: function(c) {{
               var suffix = c.dataIndex === picoIdx ? ' ★ Pico' : '';
