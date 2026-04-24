@@ -1,11 +1,20 @@
 {
-  "version": "1.9.1",
-  "download_url": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.1/Netpoint.Report.Generator.exe",
+  "version": "1.9.2",
+  "download_url": {
+    "windows": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.2/Netpoint.Report.Generator.exe",
+    "macos": "https://github.com/fernandokolmar/netpoint-report-generator/releases/download/v1.9.2/Netpoint.Report.Generator.macOS.dmg"
+  },
   "history": [
+    {
+      "version": "1.9.2",
+      "notes": [
+        "Atualização automática para macOS — o app agora detecta a plataforma e baixa o instalador correto (.exe no Windows, .dmg no macOS), substituindo e relançando automaticamente em ambos os sistemas."
+      ]
+    },
     {
       "version": "1.9.1",
       "notes": [
-        "Correção de atualização automática — o app agora reabre corretamente após instalar a nova versão, sem erros de DLL."
+        "Correção de atualização automática no Windows — o app agora reabre corretamente após instalar a nova versão, sem erros de DLL."
       ]
     },
     {
