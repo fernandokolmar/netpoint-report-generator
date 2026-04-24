@@ -123,15 +123,29 @@ class ReportDataProcessor:
             else:
                 processed[f'{key}_processed'] = None
 
+        # Processar inscritos Zoom (opcional)
+        if 'inscritos_zoom' in dfs and dfs['inscritos_zoom'] is not None:
+            self._log("Processando inscritos Zoom...")
+            processed['inscritos_zoom_processed'] = self._process_inscritos_zoom(dfs['inscritos_zoom'].copy())
+        else:
+            self._log("⊘ Inscritos Zoom: não há dados para processar")
+            processed['inscritos_zoom_processed'] = None
+
         # Processar presença no Zoom (opcional)
         if 'presenca_zoom' in dfs and dfs['presenca_zoom'] is not None:
             self._log("Processando presença no Zoom...")
+            df_inscritos_zoom = dfs.get('inscritos_zoom')
             processed['presenca_zoom_processed'] = self._process_presenca_zoom(dfs['presenca_zoom'].copy())
-            processed['presenca_zoom_consolidado'] = self._consolidate_presenca_zoom(dfs['presenca_zoom'].copy())
+            processed['presenca_zoom_consolidado'] = self._consolidate_presenca_zoom(
+                dfs['presenca_zoom'].copy(), df_inscritos_zoom
+            )
+            # Repassar metadados da reunião (dict, não DataFrame)
+            processed['presenca_zoom_meta'] = dfs.get('presenca_zoom_meta', {})
         else:
             self._log("⊘ Presença no Zoom: não há dados para processar")
             processed['presenca_zoom_processed'] = None
             processed['presenca_zoom_consolidado'] = None
+            processed['presenca_zoom_meta'] = {}
 
         self._log("Processando totalizado...")
         processed['totalizado_processed'] = self._process_totalizado(
@@ -476,6 +490,30 @@ class ReportDataProcessor:
             return df[available]
         return df
 
+    def _process_inscritos_zoom(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Processa DataFrame de inscritos exportado pelo Zoom Webinar.
+
+        Colunas típicas: Nome, Sobrenome, E-mail, Horário de inscrição,
+        Status da Aprovação, Especialidade, Telefone, Cidade, Estado.
+
+        Mantém todas as colunas com dados, na ordem em que aparecem.
+
+        Args:
+            df: DataFrame bruto já parseado (cabeçalho real dos inscritos)
+
+        Returns:
+            DataFrame limpo
+        """
+        # Remover colunas completamente vazias
+        df = self._remove_empty_columns(df)
+
+        # Remover linhas completamente vazias
+        df = df.dropna(how='all').reset_index(drop=True)
+
+        self._log(f"✓ Inscritos Zoom processados: {len(df)} registros")
+        return df
+
     def _process_presenca_zoom(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Processa DataFrame de presença no Zoom.
@@ -510,67 +548,139 @@ class ReportDataProcessor:
         remaining = [col for col in df.columns if col not in ordered]
         return df[ordered + remaining]
 
-    def _consolidate_presenca_zoom(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _consolidate_presenca_zoom(self, df: pd.DataFrame, df_inscritos: pd.DataFrame = None) -> pd.DataFrame:
         """
-        Consolida presença no Zoom agrupando por participante.
+        Consolida presença no Zoom agrupando por participante e, quando disponível,
+        cruza com os inscritos para enriquecer com Nome completo, Telefone e Especialidade.
 
-        O arquivo Zoom exporta uma linha por sessão (entrada/saída).
-        Um mesmo participante pode ter várias linhas (entrou/saiu/voltou).
-        Este método agrupa por nome e soma o tempo total.
-
-        Resultado por participante:
-        - Nome
-        - E-mail (primeiro valor não vazio)
-        - Primeira entrada
-        - Última saída
-        - Duração total (minutos) — soma de todas as sessões
-        - Convidado
+        Colunas do resultado:
+          Nome, Sobrenome (se inscritos disponível), E-mail, Telefone (se houver),
+          Especialidade (se houver), Permanência (minutos)
 
         Args:
-            df: DataFrame bruto de presença Zoom
+            df: DataFrame bruto de presença Zoom (uma linha por sessão)
+            df_inscritos: DataFrame de inscritos Zoom (opcional, para enriquecimento)
 
         Returns:
             DataFrame consolidado com uma linha por participante
         """
         col_nome = 'Nome (nome original)'
         col_email = 'E-mail'
-        col_entrada = 'Ingressar na hora'
-        col_saida = 'Hora de saída'
         col_duracao = 'Duração (minutos)'
-        col_convidado = 'Convidado'
 
         if col_nome not in df.columns or col_duracao not in df.columns:
             self._log("⚠ Colunas esperadas não encontradas no arquivo Zoom — retornando sem consolidar")
             return df
 
-        # Converter duração para numérico
+        df = df.copy()
         df[col_duracao] = pd.to_numeric(df[col_duracao], errors='coerce').fillna(0)
 
-        # Agrupar por nome
+        # Agrupar por nome: soma duração, primeiro e-mail não vazio
         agg = {col_duracao: 'sum'}
-
         if col_email in df.columns:
             agg[col_email] = lambda x: next((v for v in x if pd.notna(v) and str(v).strip()), '')
 
-        if col_entrada in df.columns:
-            agg[col_entrada] = 'min'
-
-        if col_saida in df.columns:
-            agg[col_saida] = 'max'
-
-        if col_convidado in df.columns:
-            agg[col_convidado] = 'first'
-
         consolidado = df.groupby(col_nome, as_index=False).agg(agg)
+        consolidado = consolidado.rename(columns={col_duracao: 'Permanência (minutos)'})
 
-        # Reordenar colunas
-        desired_order = [col_nome, col_email, col_entrada, col_saida, col_duracao, col_convidado]
-        ordered = [c for c in desired_order if c in consolidado.columns]
+        # Enriquecer com dados dos inscritos
+        if df_inscritos is not None and len(df_inscritos) > 0:
+            inscritos = df_inscritos.copy()
+
+            col_sob    = 'Sobrenome' if 'Sobrenome' in inscritos.columns else None  # usado só para nome completo no lookup
+            col_tel    = 'Telefone'  if 'Telefone'  in inscritos.columns else None
+            col_esp    = next((c for c in ['Especialidade', 'Especialidade:', 'Clínica']
+                               if c in inscritos.columns), None)
+            col_ins_email = 'E-mail' if 'E-mail' in inscritos.columns else None
+            col_ins_nome  = 'Nome'   if 'Nome'   in inscritos.columns else None
+
+            enrich_cols = [c for c in [col_tel, col_esp] if c]  # Sobrenome não vai para o resultado
+            lookup_cols = [c for c in [col_ins_nome, col_ins_email, col_sob] + enrich_cols if c]
+            lk = inscritos[list(dict.fromkeys(lookup_cols))].copy()
+
+            # Pré-computar chaves normalizadas
+            if col_ins_email:
+                lk['_email_norm'] = lk[col_ins_email].astype(str).str.strip().str.lower()
+            if col_ins_nome:
+                nome_base = lk[col_ins_nome].astype(str).str.strip()
+                if col_sob:
+                    sob_base = lk[col_sob].astype(str).str.strip()
+                    lk['_nome_completo'] = (nome_base + ' ' + sob_base).str.strip().str.lower()
+                else:
+                    lk['_nome_completo'] = nome_base.str.lower()
+                lk['_primeiro_nome'] = nome_base.str.split().str[0].str.lower()
+
+            def _lookup(row):
+                email = str(row.get(col_email, '') or '').strip().lower()
+                nome_presenca = str(row.get(col_nome, '') or '').strip().lower()
+
+                match = None
+
+                # Regra 1: e-mail exato (ambos não vazios)
+                if email and col_ins_email and '_email_norm' in lk.columns:
+                    m = lk[lk['_email_norm'] == email]
+                    if len(m) == 1:
+                        match = m.iloc[0]
+                    elif len(m) > 1:
+                        # Múltiplos inscritos com mesmo e-mail — ambíguo, não faz match
+                        pass
+
+                # Regra 2: nome completo da presença == Nome + Sobrenome dos inscritos
+                if match is None and '_nome_completo' in lk.columns:
+                    m = lk[lk['_nome_completo'] == nome_presenca]
+                    if len(m) == 1:
+                        match = m.iloc[0]
+                    elif len(m) > 1:
+                        # Vários inscritos com mesmo nome completo — ambíguo
+                        pass
+
+                # Regra 3: primeiro nome único, mas somente se o nome completo da presença
+                # for compatível com Nome + Sobrenome do inscrito (o nome da presença deve
+                # estar contido no nome completo do inscrito, ou vice-versa).
+                # Evita match entre "Paula Ugalde Figueroa" e "Paula Merello".
+                if match is None and '_primeiro_nome' in lk.columns:
+                    primeiro = nome_presenca.split()[0] if nome_presenca else ''
+                    if primeiro:
+                        m = lk[lk['_primeiro_nome'] == primeiro]
+                        if len(m) == 1:
+                            ins_nome_completo = str(m.iloc[0].get('_nome_completo', '') or '').strip()
+                            ins_email = str(m.iloc[0].get('_email_norm', '') or '').strip()
+
+                            # Verificar compatibilidade de nome: um deve estar contido no outro
+                            nomes_compatíveis = (
+                                nome_presenca in ins_nome_completo or
+                                ins_nome_completo in nome_presenca
+                            )
+
+                            # E-mails não podem ser contraditórios
+                            emails_ok = not email or not ins_email or email == ins_email
+
+                            if nomes_compatíveis and emails_ok:
+                                match = m.iloc[0]
+                        # Mais de 1 com mesmo primeiro nome → ambíguo, não faz match
+
+                result = {}
+                if match is not None:
+                    # Sobrenome é omitido intencionalmente — o nome da presença já é completo
+                    if col_tel:
+                        result['Telefone'] = str(match.get(col_tel, '') or '').strip()
+                    if col_esp:
+                        result['Especialidade'] = str(match.get(col_esp, '') or '').strip()
+                return result
+
+            enriched = consolidado.apply(_lookup, axis=1, result_type='expand')
+            consolidado = pd.concat([consolidado, enriched], axis=1)
+
+        # Ordenar colunas finais (Sobrenome omitido — nome da presença já é completo)
+        priority = [col_nome, col_email, 'Telefone', 'Especialidade', 'Permanência (minutos)']
+        ordered = [c for c in priority if c in consolidado.columns]
         remaining = [c for c in consolidado.columns if c not in ordered]
         consolidado = consolidado[ordered + remaining]
 
-        # Renomear Duração para deixar claro que é total
-        consolidado = consolidado.rename(columns={col_duracao: 'Duração total (minutos)'})
+        # Remover colunas que ficaram todas vazias após o enriquecimento
+        consolidado = consolidado.loc[:, consolidado.apply(
+            lambda col: col.astype(str).str.strip().ne('').any()
+        )]
 
         # Ordenar por nome
         consolidado = consolidado.sort_values(col_nome).reset_index(drop=True)

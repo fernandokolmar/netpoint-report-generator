@@ -112,7 +112,13 @@ class ReportController:
             self._notify("Etapa 1/3: Carregando arquivos CSV...")
             self.logger.info("Etapa 1/3: Carregando CSVs")
             self.raw_dataframes = self.loader.load_all(file_paths)
-            self.logger.info(f"CSVs carregados: {sum(len(df) for df in self.raw_dataframes.values())} registros totais")
+
+            # Capturar metadados da reunião Zoom (cabeçalho resumo) se houver arquivo
+            if file_paths.get('presenca_zoom'):
+                _, zoom_meta = self.loader._load_zoom_full(file_paths['presenca_zoom'])
+                self.raw_dataframes['presenca_zoom_meta'] = zoom_meta
+
+            self.logger.info(f"CSVs carregados: {sum(len(df) for df in self.raw_dataframes.values() if hasattr(df, '__len__'))} registros totais")
 
             # 2. Processar dados
             self._notify("Etapa 2/3: Processando dados...")
@@ -278,6 +284,86 @@ class ReportController:
         self.raw_dataframes.clear()
         self.processed_dataframes.clear()
         self._notify("Cache limpo")
+
+    def generate_zoom_report(
+        self,
+        zoom_file_paths: Dict[str, str],
+        output_path: str,
+        inscritos_zoom_path: str = ''
+    ) -> Tuple[str, Dict]:
+        """
+        Gera relatório Excel exclusivo de Zoom a partir de múltiplos arquivos.
+
+        Cada arquivo Zoom gera um par de abas "Zoom Consolidado" + "Presença no Zoom".
+        Opcionalmente inclui a aba "Inscritos Zoom".
+
+        Args:
+            zoom_file_paths: Dicionário {key: caminho} onde key é 'zoom_1', 'zoom_2', etc.
+            output_path: Caminho onde salvar arquivo Excel
+            inscritos_zoom_path: Caminho opcional para arquivo de inscritos Zoom
+
+        Returns:
+            Tupla (caminho_arquivo, estatísticas)
+        """
+        self._notify("Iniciando geração de Relatório Zoom...")
+        self.logger.info(f"Iniciando Relatório Zoom. Arquivos: {list(zoom_file_paths.keys())}")
+
+        start_time = time.time()
+
+        try:
+            zoom_files = []
+
+            # Carregar inscritos Zoom primeiro (usado no enriquecimento do consolidado)
+            df_inscritos_zoom = None
+            if inscritos_zoom_path:
+                self._notify("Carregando inscritos Zoom...")
+                df_raw_inscritos = self.loader._load_inscritos_zoom_csv(inscritos_zoom_path)
+                df_inscritos_zoom = self.processor._process_inscritos_zoom(df_raw_inscritos)
+
+            for key in sorted(zoom_file_paths.keys()):
+                path = zoom_file_paths[key]
+                if not path:
+                    continue
+
+                label = key.replace('zoom_', '')
+                self._notify(f"Carregando arquivo Zoom {label}...")
+                df_raw, meta = self.loader._load_zoom_full(path)
+
+                self._notify(f"Processando arquivo Zoom {label}...")
+                df_detalhe = self.processor._process_presenca_zoom(df_raw)
+                df_consolidado = self.processor._consolidate_presenca_zoom(df_raw, df_inscritos_zoom)
+
+                zoom_files.append({
+                    'label': label,
+                    'detalhe': df_detalhe,
+                    'consolidado': df_consolidado,
+                    'inscritos': df_inscritos_zoom,
+                    'meta': meta,
+                })
+
+            if not zoom_files:
+                raise ValueError("Nenhum arquivo Zoom válido foi encontrado.")
+
+            self._notify("Gerando arquivo Excel...")
+            result = self.generator.generate_zoom_only(zoom_files, output_path)
+
+            duration = time.time() - start_time
+            stats = {
+                'duration_seconds': duration,
+                'total_records': sum(len(f['detalhe']) for f in zoom_files if f['detalhe'] is not None),
+                'files_processed': len(zoom_files),
+                'output_size_mb': 0,
+                'details': {'zoom_files': len(zoom_files)},
+            }
+            if os.path.exists(output_path):
+                stats['output_size_mb'] = os.path.getsize(output_path) / (1024 ** 2)
+
+            self._notify(f"✓ Relatório Zoom gerado com sucesso: {result}")
+            return result, stats
+
+        except Exception as e:
+            self.logger.exception(f"Erro ao gerar Relatório Zoom: {str(e)}")
+            raise
 
     def _collect_statistics(
         self,

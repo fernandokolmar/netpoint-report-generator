@@ -1,4 +1,4 @@
-# Netpoint Report Generator v1.6.0
+# Netpoint Report Generator v1.7.0
 
 Aplicação desenvolvida pela **Netpoint** para processar dados de videoconferência e gerar relatórios profissionais em Excel.
 
@@ -6,81 +6,86 @@ Aplicação desenvolvida pela **Netpoint** para processar dados de videoconferê
 
 ## Funcionalidades
 
-### Processamento de Dados
-- Importa arquivos CSV de videoconferência:
-  - **Inscritos** (opcional) - Lista de participantes inscritos
-  - **Mensagens** (opcional) - Mensagens da sessão
-  - **Chat** (opcional) - Chat da sessão
-  - **Permanência** - Logs de permanência dos participantes
-  - **Totalizado** - Dados agregados por minuto
-  - **Enquetes** (opcional, múltiplas) - Resultados de enquetes do evento
-  - **Presença no Zoom** (opcional) - Participantes de reunião Zoom paralela
+### Relatório Evento (Aba 1)
 
-### Detecção Automática de Formato
-- Suporta diferentes estruturas de CSV de diferentes eventos
-- Coluna `Login` preservada como identificador de acesso
-- Remove colunas completamente vazias
-- Adapta-se a diferentes formatos de relatório
-- **Suporte a Minnit Chat**: Detecta e converte automaticamente arquivos de chat do Minnit
-- **Filtro de usuários de sistema**: Remove automaticamente registros de sistema (ex: `Login='visitante'`)
+Importa arquivos CSV do evento e gera um relatório Excel completo:
 
-### Relatório Excel Gerado
-O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
+| Arquivo | Obrigatório | Descrição |
+|---|---|---|
+| Inscritos | Opcional | Lista de participantes inscritos |
+| Mensagens | Opcional | Mensagens da sessão |
+| Chat | Opcional | Chat da sessão |
+| Relatório de Acesso | Sim | Logs de acesso/permanência |
+| Totalizado | Sim | Dados agregados por minuto |
+| Participantes Zoom | Opcional | CSV exportado pelo Zoom Webinar |
+| Inscrições Zoom | Opcional | Lista de inscritos exportada pelo Zoom |
+| Enquetes | Opcional (múltiplas) | Resultados de enquetes do evento |
+
+### Relatório Zoom (Aba 2)
+
+Gera um relatório Excel exclusivo de dados Zoom, sem precisar dos arquivos do evento:
+
+- Adicione um ou mais arquivos **Participantes Zoom** (CSV exportado pelo Zoom)
+- Opcionalmente carregue o arquivo **Inscrições Zoom** para enriquecer o consolidado
+- Cada arquivo Zoom gera três abas no Excel:
+  - **Consolidado**: resumo da reunião + tabela de participantes enriquecida
+  - **Presença Zoom**: detalhe completo linha a linha
+  - **Inscrições Zoom**: lista completa de inscritos (quando disponível)
+
+---
+
+## Relatório Excel Gerado
+
+### Abas do Relatório Evento
 
 #### 1. Retenção na Live
-- **Tabela de dados**: Horário, Usuários conectados, Max (pico)
-- **Gráfico de linha**: Visualização da audiência ao longo do tempo
-- **Tabela de resumo estatístico**:
-  - Quantidade de Inscritos
-  - Usuários distintos na live
-  - Total de espectadores (quando aplicável — ver NumPessoas)
-  - Pico de audiência
-  - Hora de pico
-  - Tempo médio assistido (hh:mm)
-  - Total de mensagens enviadas (se houver)
-  - Total de mensagens no chat (se houver)
+- Tabela: Horário, Usuários conectados, Max (pico)
+- Gráfico de linha: audiência ao longo do tempo
+- Resumo estatístico: Inscritos, usuários distintos, pico, hora de pico, tempo médio, total de mensagens
 
 #### 2. Mensagens (opcional)
-- Tabela com todas as mensagens
-- Formatação automática de colunas
-- Total de mensagens
+- Tabela com todas as mensagens, total calculado automaticamente
 
 #### 3. Chat (opcional)
 - Tabela com mensagens do chat
-- Remove colunas desnecessárias (Cliente, Sala)
-- Total de mensagens
-- **Suporta formato Minnit**: Converte automaticamente timestamp Unix para data/hora legível
+- Suporte a **formato Minnit**: timestamp Unix convertido automaticamente para data/hora legível
 
 #### 4. Permanência
-- Relatório detalhado de permanência por usuário
-- Coluna `Permanencia` com total de minutos por participante
-- Suporte a coluna `NumPessoas`:
-  - Se todos os valores forem 0, a coluna é ocultada
-  - Se houver valores, é gerada coluna `Total assistindo` (NumPessoas + 1)
-- Backward compatible com formato legado (`Tempo` em minutos ou datas de acesso)
+- Permanência total por participante (em minutos)
+- Suporte a `NumPessoas`: gera coluna `Total assistindo` quando há valores
 
 #### 5. Inscritos (opcional)
-- Lista completa de inscritos
-- Todas as colunas com dados são mantidas, independente do formato do evento
+- Lista completa com todas as colunas disponíveis
 
-#### 6. Zoom Consolidado + Presença no Zoom (opcional)
-- Geradas quando há arquivo de presença do Zoom
-- **Zoom Consolidado**: uma linha por participante com tempo total de sessão (soma de todas as entradas/saídas), primeira entrada e última saída
-- **Presença no Zoom**: detalhe completo linha a linha exportado pelo Zoom
+#### 6. Consolidado (opcional — quando há Participantes Zoom)
+- Resumo da reunião Zoom (Tópico, ID, Anfitrião, Duração, Horário)
+- Tabela de participantes: Nome, E-mail, Especialidade/Clínica (quando disponível), Permanência (minutos)
+- Match inteligente com inscrições: e-mail exato > nome completo > primeiro nome único com validação cruzada
 
-#### 6+. Enquetes (opcional, uma aba por enquete)
-- Gerada automaticamente para cada arquivo de enquete adicionado
+#### 7. Presença Zoom (opcional)
+- Detalhe completo de todas as sessões registradas pelo Zoom
+
+#### 8. Inscrições Zoom (opcional)
+- Lista completa de inscritos exportada pelo Zoom
+
+#### 9+. Enquetes (opcional, uma aba por enquete)
+- Nomeadas: `Enquete 01`, `Enquete 02`, etc.
 - Colunas: Nome, Login, Pergunta, Resposta, Data
-- Nomeadas sequencialmente: `Enquete 01`, `Enquete 02`, etc.
-- Total de respostas calculado automaticamente
 
-### Interface Gráfica
-- Seleção de arquivos com diálogo
-- Preview dos dados antes de processar
-- Barra de progresso durante processamento
-- Histórico de arquivos recentes (menu Arquivo > Recentes)
-- Log de status em tempo real
-- **Enquetes dinâmicas**: botão "+ Adicionar Enquete" para incluir múltiplos arquivos; botão "×" para remover
+### Abas do Relatório Zoom (por arquivo)
+
+Quando múltiplos arquivos Zoom são carregados, o sufixo numérico distingue as abas:
+`Consolidado 1`, `Presença Zoom 1`, `Inscrições Zoom 1`, `Consolidado 2`, ...
+
+---
+
+## Detecção Automática de Formato
+
+- Detecta separador CSV (`;` padrão ou `,` para Minnit)
+- Detecta formato especial de duplo cabeçalho do Zoom (Participantes e Inscrições)
+- Remove colunas e linhas completamente vazias
+- Filtra usuários de sistema (`Login='visitante'`)
+- Colunas de enriquecimento (Telefone, Especialidade) omitidas automaticamente quando não há dados
 
 ---
 
@@ -89,14 +94,13 @@ O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
 ### Para o Executável
 - **Windows**: Windows 10/11 (64-bit) — arquivo `.exe`
 - **macOS**: macOS 12+ — arquivo `.dmg`
-- **Espaço em disco**: ~60 MB
-- **Memória RAM**: 4 GB (recomendado)
-- **NÃO precisa de Python instalado**
-- **NÃO precisa de dependências adicionais**
+- Espaço em disco: ~60 MB
+- Memória RAM: 4 GB (recomendado)
+- **Não requer Python ou dependências adicionais**
 
-### Para Desenvolvimento (código fonte)
+### Para Desenvolvimento
 - Python 3.8+
-- Dependências: pandas, openpyxl, Pillow
+- Dependências: `pandas`, `openpyxl`, `Pillow`
 
 ---
 
@@ -105,16 +109,12 @@ O arquivo Excel gerado contém até 5 planilhas fixas + N planilhas de enquete:
 ### Opção 1: Executável (Recomendado)
 
 1. Baixe o arquivo do seu sistema (`.exe` para Windows, `.dmg` para macOS)
-2. Execute o arquivo
-3. Não precisa de instalação adicional
+2. Execute o arquivo — nenhuma instalação necessária
 
-### Opção 2: Código Fonte (Para Desenvolvimento)
+### Opção 2: Código Fonte
 
 ```bash
-# Instalar dependências
 pip install pandas openpyxl Pillow
-
-# Executar
 python netpoint_report_generator.py
 ```
 
@@ -122,12 +122,19 @@ python netpoint_report_generator.py
 
 ## Como Usar
 
-1. **Abra o aplicativo**
-2. **Carregue os arquivos CSV** usando os botões "Procurar"
-3. **Opcional**: Use "Preview" para verificar os dados
-4. **Clique em "Processar e Gerar Relatório"**
-5. **Escolha onde salvar** o arquivo Excel
-6. **Pronto!** O relatório será gerado
+### Relatório Evento
+1. Abra o aplicativo na aba **Relatório Evento**
+2. Carregue os arquivos CSV obrigatórios (Relatório de Acesso, Totalizado)
+3. Adicione os opcionais desejados (Inscritos, Mensagens, Chat, Participantes Zoom, Inscrições Zoom, Enquetes)
+4. Clique em **"Processar e Gerar Relatório"**
+5. Escolha onde salvar o arquivo Excel
+
+### Relatório Zoom
+1. Abra o aplicativo na aba **Relatório Zoom**
+2. Clique em **"+ Adicionar Participantes Zoom"** para cada arquivo CSV do Zoom
+3. Opcionalmente carregue o arquivo **Inscrições Zoom**
+4. Clique em **"Gerar Relatório Zoom"**
+5. Escolha onde salvar o arquivo Excel
 
 ---
 
@@ -135,12 +142,12 @@ python netpoint_report_generator.py
 
 ```
 App Estatisticas/
-├── netpoint_report_generator.py  # Aplicação principal
+├── netpoint_report_generator.py  # Aplicação principal (UI)
 ├── config/
-│   ├── settings.py               # Configurações (nome, versão, constantes)
+│   ├── settings.py               # Configurações (versão, constantes)
 │   └── column_mappings.py        # Mapeamento de colunas
 ├── core/
-│   ├── controller.py             # Controlador principal
+│   ├── controller.py             # Orquestração do fluxo
 │   ├── data_loader.py            # Carregamento de CSVs
 │   ├── data_processor.py         # Processamento de dados
 │   ├── excel_generator.py        # Geração do Excel
@@ -149,78 +156,68 @@ App Estatisticas/
 │   ├── preview_window.py         # Janela de preview
 │   └── stats_window.py           # Janela de estatísticas
 ├── utils/
-│   └── file_history.py           # Histórico de arquivos
+│   └── file_history.py           # Histórico de arquivos recentes
 ├── assets/
 │   ├── icon.ico                  # Ícone Windows
 │   └── icon.png                  # Ícone PNG
-└── dist/
-    └── Netpoint Report Generator.exe  # Executável Windows
+├── netpoint.spec                 # Build Windows (PyInstaller)
+└── netpoint_macos.spec           # Build macOS (PyInstaller)
 ```
 
 ---
 
 ## Changelog
 
+### v1.7.0 (2026-04-24)
+- **Relatório Zoom exclusivo** (Aba 2): gera Excel com dados Zoom sem precisar dos arquivos do evento
+  - Suporte a múltiplos arquivos Zoom em paralelo
+  - **Inscrições Zoom**: carregamento opcional do CSV de inscritos exportado pelo Zoom
+  - **Consolidado**: resumo da reunião + tabela de participantes enriquecida com dados das inscrições
+  - **Match inteligente**: e-mail exato > nome completo > primeiro nome único (com validação cruzada de nomes e e-mails para evitar matches incorretos)
+  - Colunas de enriquecimento (Especialidade, Clínica) exibidas apenas quando há dados
+  - Três abas por arquivo Zoom: Consolidado, Presença Zoom, Inscrições Zoom
+- **Labels atualizados**: "Participantes Zoom" e "Inscrições Zoom" refletem os nomes reais dos arquivos exportados pelo Zoom
+
 ### v1.6.0 (2026-04-10)
 - **Inscritos agora opcional**: eventos sem lista de inscritos funcionam normalmente
-- **Presença no Zoom**: novo campo opcional para importar arquivo CSV exportado pelo Zoom
-  - Detecta automaticamente o formato especial de duplo cabeçalho do Zoom
-  - **Zoom Consolidado**: aba com uma linha por participante, tempo total somado, primeira entrada e última saída
-  - **Presença no Zoom**: aba com detalhe linha a linha de todas as sessões
-- Resumo do evento se adapta dinamicamente (sem linha de inscritos quando não há arquivo)
+- **Presença no Zoom**: campo opcional para importar CSV exportado pelo Zoom
+  - Detecta automaticamente formato de duplo cabeçalho do Zoom
+  - Zoom Consolidado e Presença no Zoom gerados como abas separadas
 
 ### v1.5.0 (2026-03-27)
-- **Planilha "Permanência"**: Substitui a aba "Acessos" com dados mais completos
-  - Usa coluna `Permanencia` (minutos diretos, sem conversão)
-  - Backward compatible com formato legado (`Tempo` ou datas de acesso)
-- **Suporte a NumPessoas**: Quando participantes assistem em grupo
-  - Se todos os valores forem 0, coluna é ocultada automaticamente
-  - Se houver valores, gera coluna `Total assistindo` (NumPessoas + 1)
-  - Linha "Total de espectadores" no resumo quando aplicável
-- **Inscritos completos**: Todas as colunas com dados são mantidas, independente do formato do evento
+- **Planilha "Permanência"**: substitui a aba "Acessos" com dados mais completos
+- **Suporte a NumPessoas**: coluna `Total assistindo` gerada automaticamente quando aplicável
+- **Inscritos completos**: todas as colunas com dados são mantidas
 
 ### v1.4.0 (2025-03-05)
-- **Suporte a Enquetes**: Importação de múltiplos arquivos de enquete (opcional)
-  - Botão "+ Adicionar Enquete" na interface
-  - Cada enquete gera uma aba separada no Excel
+- **Enquetes**: suporte a múltiplos arquivos de enquete; cada um gera uma aba separada
 
 ### v1.3.0 (2025-03-05)
-- **Correção crítica de crash**: Arquivos com colunas `Login` e `Celular` simultâneas causavam `AttributeError`
-- **Coluna `Login` preservada**: Não é mais renomeada automaticamente
-- **Filtro de usuários de sistema**: Registros com `Login='visitante'` removidos automaticamente
-- **Robustez em colunas duplicadas**: `_remove_empty_columns` usa índice posicional
+- Correção crítica de crash com colunas `Login` e `Celular` simultâneas
+- Coluna `Login` preservada sem renomeação automática
+- Filtro de usuários de sistema (`Login='visitante'`)
 
 ### v1.2.0 (2025-02-05)
-- **Suporte a Minnit Chat**: Detecta e processa automaticamente arquivos de chat do Minnit
-- Gráfico de retenção melhorado
+- Suporte a formato Minnit Chat (timestamp Unix → data/hora legível)
 
 ### v1.1.0 (2025-02-04)
 - Suporte a múltiplos formatos de CSV
-- Detecção automática de Email vs Celular na coluna Login
-- Remoção automática de colunas vazias
-- Build automático para macOS via GitHub Actions
+- Detecção automática de separador e encoding
 
 ### v1.0.0 (2025-02-03)
-- Lançamento inicial — Netpoint Report Generator
-- Ícone personalizado, gráfico de retenção, executável standalone
+- Lançamento inicial
 
 ---
 
 ## Plataformas Suportadas
 
-| Plataforma | Formato | Disponível |
-|------------|---------|------------|
+| Plataforma | Formato | Status |
+|------------|---------|--------|
 | Windows    | .exe    | ✅ |
 | macOS      | .dmg    | ✅ (via GitHub Actions) |
 
 ---
 
-## Suporte
-
-Para problemas ou sugestões, entre em contato com a equipe Netpoint.
-
----
-
-**Desenvolvido por**: Netpoint
-**Versão**: 1.6.0
-**Última atualização**: 10/04/2026
+**Desenvolvido por**: Netpoint  
+**Versão**: 1.7.0  
+**Última atualização**: 24/04/2026

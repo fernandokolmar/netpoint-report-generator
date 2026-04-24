@@ -225,6 +225,7 @@ class ExcelGenerator:
         has_inscritos = 'inscritos_processed' in dfs and dfs['inscritos_processed'] is not None and len(dfs['inscritos_processed']) > 0
         has_presenca_zoom = 'presenca_zoom_processed' in dfs and dfs['presenca_zoom_processed'] is not None and len(dfs['presenca_zoom_processed']) > 0
         has_zoom_consolidado = 'presenca_zoom_consolidado' in dfs and dfs['presenca_zoom_consolidado'] is not None and len(dfs['presenca_zoom_consolidado']) > 0
+        has_inscritos_zoom = 'inscritos_zoom_processed' in dfs and dfs['inscritos_zoom_processed'] is not None and len(dfs['inscritos_zoom_processed']) > 0
 
         # Verificar se há coluna Total assistindo (NumPessoas com valores > 0)
         relatorio_df = dfs.get('relatorio_processed')
@@ -264,15 +265,34 @@ class ExcelGenerator:
         self._log("Criando planilha Permanencia...")
         self._create_permanencia_sheet(wb, dfs['relatorio_processed'])
 
-        # Criar planilha Presença no Zoom — consolidado e detalhe (se houver dados)
-        if has_zoom_consolidado:
-            self._log("Criando planilha Zoom Consolidado...")
-            self._create_zoom_consolidado_sheet(wb, dfs['presenca_zoom_consolidado'])
-        if has_presenca_zoom:
-            self._log("Criando planilha Presença no Zoom (detalhe)...")
-            self._create_presenca_zoom_sheet(wb, dfs['presenca_zoom_processed'])
-        if not has_presenca_zoom and not has_zoom_consolidado:
-            self._log("⊘ Planilha Presença no Zoom: não há dados")
+        # Criar planilhas Zoom (Consolidado + Presença Zoom + Inscrições Zoom)
+        if has_zoom_consolidado or has_presenca_zoom:
+            zoom_meta = dfs.get('presenca_zoom_meta', {})
+            self._log("Criando planilha Consolidado...")
+            self._create_zoom_combined_sheet(
+                wb,
+                df_consolidado=dfs.get('presenca_zoom_consolidado'),
+                df_detalhe=None,
+                meta=zoom_meta,
+                sheet_name="Consolidado",
+                tbl_suffix=""
+            )
+            if has_presenca_zoom:
+                self._log("Criando planilha Presença Zoom...")
+                self._create_presenca_zoom_sheet_named(
+                    wb, dfs['presenca_zoom_processed'], "Presença Zoom", "Det"
+                )
+        else:
+            self._log("⊘ Planilhas Zoom: não há dados")
+
+        # Criar planilha Inscrições Zoom (se houver dados)
+        if has_inscritos_zoom:
+            self._log("Criando planilha Inscrições Zoom...")
+            self._create_inscritos_zoom_sheet_named(
+                wb, dfs['inscritos_zoom_processed'], "Inscrições Zoom", ""
+            )
+        else:
+            self._log("⊘ Planilha Inscrições Zoom: não há dados")
 
         # Criar planilha Inscritos (se houver dados)
         if has_inscritos:
@@ -936,6 +956,113 @@ class ExcelGenerator:
         # Ajustar larguras das colunas
         self._auto_adjust_column_widths(ws, max_width=50)
 
+    def _create_zoom_combined_sheet(
+        self,
+        wb: Workbook,
+        df_consolidado: pd.DataFrame,
+        df_detalhe: pd.DataFrame,
+        meta: dict,
+        sheet_name: str = "Zoom",
+        tbl_suffix: str = ""
+    ) -> None:
+        """
+        Cria aba Zoom com três blocos numa única planilha (Opção A):
+
+        Bloco 1 — Resumo da Reunião (metadados: Tópico, Anfitrião, Duração, etc.)
+        Bloco 2 — Consolidado por Participante (uma linha por pessoa, tempo total)
+        Bloco 3 — Detalhe de Sessões (todas as linhas do CSV original)
+
+        Args:
+            wb: Workbook do openpyxl
+            df_consolidado: DataFrame consolidado (uma linha por participante)
+            df_detalhe: DataFrame de detalhe (todas as sessões)
+            meta: Dict com metadados da reunião (Tópico, ID, Anfitrião, ...)
+            sheet_name: Nome da aba
+            tbl_suffix: Sufixo para nome das tabelas (evita colisão com múltiplas abas)
+        """
+        ws = wb.create_sheet(sheet_name)
+
+        # Sufixo sanitizado para nomes de tabela
+        safe_suffix = ''.join(c if c.isalnum() else '_' for c in tbl_suffix) if tbl_suffix else ''
+
+        current_row = 1
+
+        # ------------------------------------------------------------------ #
+        # BLOCO 1 — Resumo da Reunião
+        # ------------------------------------------------------------------ #
+        ws.cell(row=current_row, column=1, value="Resumo da Reunião")
+        ws.cell(row=current_row, column=1).font = Font(bold=True, size=12)
+        current_row += 1
+
+        # Mapeamento de campos relevantes na ordem de exibição
+        meta_fields = [
+            ('Tópico', 'Tópico'),
+            ('ID', 'ID da Reunião'),
+            ('Anfitrião', 'Anfitrião'),
+            ('Duração (minutos)', 'Duração (minutos)'),
+            ('Hora de início', 'Hora de início'),
+            ('Hora de fim', 'Hora de fim'),
+            ('Participantes', 'Total de participantes'),
+        ]
+
+        for meta_key, display_label in meta_fields:
+            value = meta.get(meta_key, '')
+            if value and value != 'nan':
+                ws.cell(row=current_row, column=1, value=display_label).font = Font(bold=True)
+                ws.cell(row=current_row, column=2, value=value)
+                current_row += 1
+
+        # Se não havia metadados, pular 1 linha para espaçamento
+        current_row += 1
+
+        # ------------------------------------------------------------------ #
+        # BLOCO 2 — Consolidado por Participante
+        # ------------------------------------------------------------------ #
+        ws.cell(row=current_row, column=1, value="Consolidado por Participante")
+        ws.cell(row=current_row, column=1).font = Font(bold=True, size=12)
+        current_row += 1
+
+        consolidado_start = current_row
+
+        if df_consolidado is not None and len(df_consolidado) > 0:
+            san_list = [self._sanitize_column_name(c) for c in df_consolidado.columns]
+            san_cols = self._ensure_unique_column_names(san_list)
+            san_map = dict(zip(df_consolidado.columns, san_cols))
+
+            for col_idx, col_name in enumerate(san_cols, 1):
+                ws.cell(row=current_row, column=col_idx, value=col_name).font = Font(bold=True)
+            current_row += 1
+
+            for row_idx in range(len(df_consolidado)):
+                for col_idx in range(len(df_consolidado.columns)):
+                    value = self._convert_cell_value(df_consolidado.iloc[row_idx, col_idx])
+                    ws.cell(row=current_row, column=col_idx + 1, value=value)
+                current_row += 1
+
+            # Tabela Excel para o consolidado
+            consolidado_end = current_row - 1
+            tbl_name_consol = f"tblZoomConsol{safe_suffix}" if safe_suffix else "tblZoomConsol"
+            tab_ref = f"A{consolidado_start}:{get_column_letter(len(df_consolidado.columns))}{consolidado_end}"
+            self._create_table(ws, table_name=tbl_name_consol, ref=tab_ref)
+
+            # Linha de totais fora da tabela
+            nome_col = san_map.get('Nome (nome original)', san_cols[0])
+            ws.cell(row=current_row, column=1, value=f"=SUBTOTAL(103,{tbl_name_consol}[{nome_col}])").font = Font(bold=True)
+
+            duracao_col = san_map.get('Duração total (minutos)')
+            if duracao_col and 'Duração total (minutos)' in df_consolidado.columns:
+                dur_idx = list(df_consolidado.columns).index('Duração total (minutos)') + 1
+                ws.cell(row=current_row, column=dur_idx,
+                        value=f"=SUBTOTAL(109,{tbl_name_consol}[{duracao_col}])").font = Font(bold=True)
+
+            current_row += 2  # total + espaço
+
+        # Ajustar largura da coluna A (labels do resumo) e B (valores)
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 35
+        for i in range(3, 10):
+            ws.column_dimensions[get_column_letter(i)].width = 22
+
     def _create_zoom_consolidado_sheet(self, wb: Workbook, df: pd.DataFrame) -> None:
         """
         Cria planilha "Zoom Consolidado" com tempo total por participante.
@@ -1119,6 +1246,223 @@ class ExcelGenerator:
         # Os totais são adicionados como células normais fora da tabela
 
         ws.add_table(tab)
+
+    def _create_inscritos_zoom_sheet_named(self, wb: Workbook, df: pd.DataFrame,
+                                           sheet_name: str, tbl_suffix: str = '') -> None:
+        """Cria aba de inscritos Zoom com nome e sufixo de tabela personalizados."""
+        ws = wb.create_sheet(sheet_name)
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+        san_map = dict(zip(df.columns, unique_columns))
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = self._convert_cell_value(df.iloc[row_idx, col_idx])
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        tbl_name = f"tblInscritosZoom{tbl_suffix}" if tbl_suffix else "tblInscritosZoom"
+        tbl_name = ''.join(c if c.isalnum() or c == '_' else '_' for c in tbl_name)
+        self._create_table(ws, table_name=tbl_name, ref=tab_ref)
+
+        total_row = last_data_row + 1
+        ws[f'A{total_row}'] = "Total"
+        ws[f'A{total_row}'].font = Font(bold=True)
+        first_col = unique_columns[0]
+        ws[f'B{total_row}'] = f"=SUBTOTAL(103,{tbl_name}[{first_col}])"
+        ws[f'B{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=50)
+
+    def _create_inscritos_zoom_sheet(self, wb: Workbook, df: pd.DataFrame) -> None:
+        """
+        Cria planilha "Inscritos Zoom" com os inscritos do webinar Zoom.
+
+        Args:
+            wb: Workbook do openpyxl
+            df: DataFrame com dados dos inscritos Zoom
+        """
+        ws = wb.create_sheet("Inscritos Zoom")
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+
+        sanitized_columns = {}
+        for i, col_name in enumerate(df.columns):
+            sanitized_columns[col_name] = unique_columns[i]
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = self._convert_cell_value(df.iloc[row_idx, col_idx])
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        self._create_table(ws, table_name='tblInscritosZoom', ref=tab_ref)
+
+        # Total fora da tabela
+        total_row = last_data_row + 1
+        ws[f'A{total_row}'] = "Total"
+        ws[f'A{total_row}'].font = Font(bold=True)
+        # Contar pela primeira coluna com dados (Nome)
+        first_col = unique_columns[0] if unique_columns else 'Nome'
+        ws[f'B{total_row}'] = f"=SUBTOTAL(103,tblInscritosZoom[{first_col}])"
+        ws[f'B{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=50)
+
+    def generate_zoom_only(self, zoom_files: list, output_path: str) -> str:
+        """
+        Gera relatório Excel com planilhas de Zoom estruturadas.
+
+        Para cada arquivo Zoom:
+          - Aba "Zoom [label]": Resumo da reunião + Consolidado cruzado com inscritos
+          - Aba "Sessões [label]": Tabela integral da presença (detalhe linha a linha)
+          - Aba "Inscritos Zoom [label]": Tabela integral dos inscritos (se houver)
+
+        Se houver apenas um arquivo, o label é omitido dos nomes de aba.
+
+        Args:
+            zoom_files: Lista de dicionários com chaves:
+                        - 'label': string de identificação ("1", "2", ...)
+                        - 'consolidado': DataFrame consolidado/enriquecido
+                        - 'detalhe': DataFrame de sessões completo
+                        - 'inscritos': DataFrame de inscritos (opcional)
+                        - 'meta': dict com metadados da reunião
+            output_path: Caminho onde salvar o arquivo Excel
+
+        Returns:
+            Caminho do arquivo gerado
+        """
+        self._log("Criando arquivo Excel (Relatório Zoom)...")
+
+        ExcelGenerator._table_id_counter = 0
+
+        wb = Workbook()
+        wb.remove(wb.active)
+
+        multiple = len(zoom_files) > 1
+
+        for item in zoom_files:
+            label = item.get('label', '')
+            df_consolidado = item.get('consolidado')
+            df_detalhe = item.get('detalhe')
+            df_inscritos = item.get('inscritos')
+            meta = item.get('meta', {})
+
+            suffix = f" {label}" if multiple and label else ""
+            tbl_suffix = label if multiple and label else ""
+
+            # Aba 1: Resumo da reunião + Consolidado enriquecido
+            sheet_name = f"Consolidado{suffix}"
+            self._log(f"Criando planilha {sheet_name}...")
+            self._create_zoom_combined_sheet(
+                wb,
+                df_consolidado=df_consolidado,
+                df_detalhe=None,
+                meta=meta,
+                sheet_name=sheet_name,
+                tbl_suffix=tbl_suffix
+            )
+
+            # Aba 2: Tabela integral de sessões (presença linha a linha)
+            if df_detalhe is not None and len(df_detalhe) > 0:
+                det_sheet = f"Presença Zoom{suffix}"
+                self._log(f"Criando planilha {det_sheet}...")
+                self._create_presenca_zoom_sheet_named(wb, df_detalhe, det_sheet,
+                                                       f"Det{tbl_suffix}")
+
+            # Aba 3: Tabela integral de inscrições
+            if df_inscritos is not None and len(df_inscritos) > 0:
+                ins_sheet = f"Inscrições Zoom{suffix}"
+                self._log(f"Criando planilha {ins_sheet}...")
+                self._create_inscritos_zoom_sheet_named(wb, df_inscritos, ins_sheet,
+                                                        f"Ins{tbl_suffix}")
+
+        self._log(f"Salvando arquivo: {output_path}")
+        wb.save(output_path)
+        self._log(f"Arquivo salvo com sucesso: {output_path}")
+        return output_path
+
+    def _create_zoom_consolidado_sheet_named(self, wb: Workbook, df: pd.DataFrame, sheet_name: str, tbl_suffix: str = '') -> None:
+        """Cria aba Zoom Consolidado com nome e sufixo de tabela personalizados."""
+        ws = wb.create_sheet(sheet_name)
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+
+        sanitized_columns = {}
+        for i, col_name in enumerate(df.columns):
+            sanitized_columns[col_name] = unique_columns[i]
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = self._convert_cell_value(df.iloc[row_idx, col_idx])
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        tbl_name = f"tblZoomConsolidado{tbl_suffix}" if tbl_suffix else 'tblZoomConsolidado'
+        # Sanitize table name (only letters/digits/underscores)
+        tbl_name = ''.join(c if c.isalnum() or c == '_' else '_' for c in tbl_name)
+        self._create_table(ws, table_name=tbl_name, ref=tab_ref)
+
+        total_row = last_data_row + 1
+        nome_col = sanitized_columns.get('Nome (nome original)', unique_columns[0])
+        ws[f'A{total_row}'] = f"=SUBTOTAL(103,{tbl_name}[{nome_col}])"
+        ws[f'A{total_row}'].font = Font(bold=True)
+
+        duracao_col = sanitized_columns.get('Duração total (minutos)')
+        if duracao_col:
+            duracao_idx = list(df.columns).index('Duração total (minutos)') + 1
+            duracao_letter = get_column_letter(duracao_idx)
+            ws[f'{duracao_letter}{total_row}'] = f"=SUBTOTAL(109,{tbl_name}[{duracao_col}])"
+            ws[f'{duracao_letter}{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=50)
+
+    def _create_presenca_zoom_sheet_named(self, wb: Workbook, df: pd.DataFrame, sheet_name: str, tbl_suffix: str = '') -> None:
+        """Cria aba Presença no Zoom com nome e sufixo de tabela personalizados."""
+        ws = wb.create_sheet(sheet_name)
+
+        sanitized_list = [self._sanitize_column_name(col) for col in df.columns]
+        unique_columns = self._ensure_unique_column_names(sanitized_list)
+
+        sanitized_columns = {}
+        for i, col_name in enumerate(df.columns):
+            sanitized_columns[col_name] = unique_columns[i]
+
+        for col_idx, col_name in enumerate(unique_columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        for row_idx in range(len(df)):
+            for col_idx in range(len(df.columns)):
+                value = self._convert_cell_value(df.iloc[row_idx, col_idx])
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=value)
+
+        last_data_row = len(df) + 1
+        tab_ref = f"A1:{get_column_letter(len(df.columns))}{last_data_row}"
+        tbl_name = f"tblPresencaZoom{tbl_suffix}" if tbl_suffix else 'tblPresencaZoom'
+        tbl_name = ''.join(c if c.isalnum() or c == '_' else '_' for c in tbl_name)
+        self._create_table(ws, table_name=tbl_name, ref=tab_ref)
+
+        total_row = last_data_row + 1
+        nome_col = sanitized_columns.get('Nome (nome original)', unique_columns[0])
+        ws[f'A{total_row}'] = f"=SUBTOTAL(103,{tbl_name}[{nome_col}])"
+        ws[f'A{total_row}'].font = Font(bold=True)
+
+        self._auto_adjust_column_widths(ws, max_width=50)
 
     def _auto_adjust_column_widths(
         self,

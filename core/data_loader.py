@@ -147,9 +147,11 @@ class CSVLoader:
             self._notify(f"Carregando {key}...")
 
             try:
-                # Formato especial para presença no Zoom
-                if key == 'presenca_zoom':
+                # Formatos especiais para arquivos Zoom
+                if key == 'presenca_zoom' or key.startswith('presenca_zoom_'):
                     df = self._load_zoom_csv(path)
+                elif key == 'inscritos_zoom':
+                    df = self._load_inscritos_zoom_csv(path)
                 else:
                     df = self.load_csv(path)
 
@@ -279,32 +281,83 @@ class CSVLoader:
                         f"⚠ Aviso: Coluna '{col}' em {df_type} tem {null_percentage:.1f}% de valores vazios"
                     )
 
-    def _load_zoom_csv(self, file_path: str) -> pd.DataFrame:
+    def _load_inscritos_zoom_csv(self, file_path: str) -> pd.DataFrame:
         """
-        Carrega arquivo CSV exportado pelo Zoom.
+        Carrega arquivo CSV de inscritos exportado pelo Zoom Webinar.
 
         O Zoom exporta com um formato especial de duas seções:
-        - Linha 1: cabeçalho do resumo da reunião
-        - Linha 2: dados do resumo (tópico, duração, etc.)
-        - Linha 3: em branco
-        - Linha 4: cabeçalho real dos participantes
-        - Linhas 5+: dados dos participantes
+        - Linhas 1-4: resumo do webinar (tópico, datas, totais)
+        - Linha 5: marcador "Detalhes dos Participantes"
+        - Linha 6: cabeçalho real (Nome, Sobrenome, E-mail, ...)
+        - Linhas 7+: dados dos inscritos
 
-        Este método detecta a linha do cabeçalho real procurando por
-        "Nome (nome original)" e carrega a partir daí.
+        Este método detecta a linha de cabeçalho procurando pela linha
+        seguinte a "Detalhes dos Participantes".
+
+        Args:
+            file_path: Caminho do arquivo CSV de inscritos Zoom
+
+        Returns:
+            DataFrame com dados dos inscritos
+        """
+        self._validate_file_size(file_path)
+
+        for encoding in [CSV_ENCODING, 'utf-8', 'latin-1']:
+            try:
+                with open(file_path, 'r', encoding=encoding) as f:
+                    lines = f.readlines()
+                break
+            except UnicodeDecodeError:
+                continue
+
+        # Encontrar linha após "Detalhes dos Participantes"
+        header_row = None
+        for i, line in enumerate(lines):
+            stripped = line.strip().strip('"')
+            if 'Detalhes dos Participantes' in stripped or 'Attendee Detail' in stripped:
+                header_row = i + 1  # linha seguinte é o cabeçalho real
+                break
+
+        if header_row is None:
+            self._notify("⚠ Formato Inscritos Zoom não detectado — carregando como CSV padrão")
+            return self._load_with_auto_separator(file_path, CSV_ENCODING, ',')
+
+        self._notify(f"✓ Formato Inscritos Zoom detectado — cabeçalho na linha {header_row + 1}")
+        df = pd.read_csv(file_path, encoding=encoding, sep=',', skiprows=header_row)
+        return df
+
+    def _load_zoom_csv(self, file_path: str) -> pd.DataFrame:
+        """
+        Carrega arquivo CSV exportado pelo Zoom (apenas participantes).
+
+        Mantido para compatibilidade com código existente.
+        Use _load_zoom_full() para obter também os metadados da reunião.
+        """
+        df, _ = self._load_zoom_full(file_path)
+        return df
+
+    def _load_zoom_full(self, file_path: str):
+        """
+        Carrega arquivo CSV exportado pelo Zoom, retornando participantes E metadados.
+
+        O Zoom exporta com um formato especial de duas seções:
+        - Linha 1: cabeçalho do resumo (Tópico, ID, Anfitrião, Duração, ...)
+        - Linha 2: dados do resumo da reunião
+        - Linha 3: em branco
+        - Linha 4: cabeçalho real dos participantes (Nome (nome original), ...)
+        - Linhas 5+: dados dos participantes
 
         Args:
             file_path: Caminho do arquivo CSV do Zoom
 
         Returns:
-            DataFrame com dados dos participantes
+            Tupla (df_participantes, meta_dict) onde meta_dict contém os
+            campos do cabeçalho da reunião (Tópico, ID, Anfitrião, etc.)
         """
         self._validate_file_size(file_path)
 
-        # Tentar encodings comuns
         for encoding in [CSV_ENCODING, 'utf-8', 'latin-1']:
             try:
-                # Ler o arquivo linha a linha para encontrar o cabeçalho real
                 with open(file_path, 'r', encoding=encoding) as f:
                     lines = f.readlines()
                 break
@@ -318,15 +371,25 @@ class CSVLoader:
                 header_row = i
                 break
 
-        if header_row is None:
-            # Fallback: tentar carregar normalmente (pode ser formato diferente)
-            self._notify("⚠ Formato Zoom não detectado — carregando como CSV padrão")
-            return self._load_with_auto_separator(file_path, CSV_ENCODING, ',')
+        # Extrair metadados da reunião (linhas 1 e 2 do arquivo)
+        meta = {}
+        try:
+            import io
+            meta_df = pd.read_csv(io.StringIO(''.join(lines[:2])), sep=',', encoding_errors='replace')
+            if len(meta_df) > 0:
+                for col in meta_df.columns:
+                    meta[col.strip()] = str(meta_df.iloc[0][col]).strip() if pd.notna(meta_df.iloc[0][col]) else ''
+        except Exception:
+            pass
 
-        # Carregar a partir da linha do cabeçalho real
+        if header_row is None:
+            self._notify("⚠ Formato Zoom não detectado — carregando como CSV padrão")
+            df = self._load_with_auto_separator(file_path, CSV_ENCODING, ',')
+            return df, meta
+
         self._notify(f"✓ Formato Zoom detectado — cabeçalho de participantes na linha {header_row + 1}")
         df = pd.read_csv(file_path, encoding=encoding, sep=',', skiprows=header_row)
-        return df
+        return df, meta
 
     def _notify(self, message: str) -> None:
         """

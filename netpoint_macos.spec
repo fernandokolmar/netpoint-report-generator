@@ -86,8 +86,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'Netpoint Report Generator',
         'CFBundleDisplayName': 'Netpoint Report Generator',
-        'CFBundleVersion': '1.0.0',
-        'CFBundleShortVersionString': '1.0.0',
+        'CFBundleVersion': '1.7.0',
+        'CFBundleShortVersionString': '1.7.0',
         'NSHighResolutionCapable': 'True',
         'NSRequiresAquaSystemAppearance': 'False',
     },
