@@ -10,6 +10,7 @@ _CSS = """
   --blue: #0d3b6e; --teal: #1a7a8a; --light: #e8f4f8;
   --green: #2ecc71; --red: #e74c3c; --orange: #f39c12;
   --muted: #6c757d; --border: #dee2e6; --bg: #f4f7fb;
+  --insight-bg: #f0f7ff;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: #1a1a2e; font-size: 12px; line-height: 1.5; }
@@ -44,6 +45,12 @@ tbody td { padding:5px 10px; border-bottom:1px solid var(--border); vertical-ali
 .enquete-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:2px; }
 .enquete-pergunta { font-size:11px; color:#444; margin-bottom:4px; font-style:italic; }
 .enquete-meta { font-size:10px; color:var(--muted); margin-bottom:8px; }
+.insights-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.insight-card { background:var(--insight-bg); border-radius:8px; padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,.07); border-left:4px solid var(--teal); }
+.insight-icon { font-size:22px; margin-bottom:6px; }
+.insight-title { font-size:12px; font-weight:700; color:var(--blue); margin-bottom:4px; }
+.insight-body { font-size:11px; color:#333; line-height:1.5; }
+.ai-badge { display:inline-block; font-size:9px; letter-spacing:.5px; text-transform:uppercase; background:var(--teal); color:#fff; border-radius:3px; padding:1px 5px; margin-left:8px; vertical-align:middle; }
 .footer { text-align:center; font-size:10px; color:var(--muted); margin-top:16px; padding-top:10px; border-top:1px solid var(--border); }
 @media print {
   body { background:#fff; }
@@ -77,7 +84,7 @@ def _table(headers: List[str], rows: List[List[Any]]) -> str:
     return f'<table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table>'
 
 
-def render_html(metrics: Dict[str, Any]) -> str:
+def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
     """Takes a metrics dict from report_engine and returns a full HTML string."""
     evento_nome = metrics.get('zoom_topico') or 'Evento'
     evento_data = metrics.get('evento_data', '')
@@ -185,6 +192,24 @@ def render_html(metrics: Dict[str, Any]) -> str:
             '<section>'
             '<h2>Enquetes</h2>'
             + enq_html +
+            '</section>'
+        )
+
+    # --- Insights IA ---
+    if insights:
+        cards_html = ''
+        for ins in insights:
+            cards_html += (
+                f'<div class="insight-card">'
+                f'<div class="insight-icon">{_e(ins.get("icon", "💡"))}</div>'
+                f'<div class="insight-title">{_e(ins.get("title", ""))}</div>'
+                f'<div class="insight-body">{_e(ins.get("body", ""))}</div>'
+                f'</div>'
+            )
+        sections.append(
+            '<section>'
+            '<h2>Insights <span class="ai-badge">IA</span></h2>'
+            '<div class="insights-grid">' + cards_html + '</div>'
             '</section>'
         )
 

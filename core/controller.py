@@ -12,6 +12,7 @@ from .excel_generator import ExcelGenerator
 from .report_engine import compute_metrics
 from .report_renderer import render_html
 from .report_exporter import export_html, open_in_browser
+from .ai_insights import load_api_key, gerar_insights_claude
 from utils.logger import get_logger
 
 
@@ -390,7 +391,21 @@ class ReportController:
         self.logger.info(f"Gerando Relatório Inteligente em {output_path}")
 
         metrics = compute_metrics(self.processed_dataframes)
-        html_content = render_html(metrics)
+
+        insights = None
+        api_key = load_api_key()
+        if api_key:
+            try:
+                self._notify("Consultando Claude para gerar insights...")
+                insights = gerar_insights_claude(metrics, api_key)
+                self.logger.info(f"{len(insights)} insights gerados via Claude API")
+            except Exception as e:
+                self.logger.warning(f"Não foi possível gerar insights via IA: {e}")
+                self._notify("Aviso: insights IA indisponíveis, continuando sem eles...")
+        else:
+            self.logger.info("anthropic_config.json não encontrado — relatório sem insights IA")
+
+        html_content = render_html(metrics, insights)
         result = export_html(html_content, output_path)
         open_in_browser(result)
 

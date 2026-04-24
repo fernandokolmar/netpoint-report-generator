@@ -24,6 +24,8 @@ a = Analysis(
         ('ui', 'ui'),
         # Incluir pasta utils
         ('utils', 'utils'),
+        # Incluir config da API Anthropic (se existir)
+        *([('anthropic_config.json', '.')] if os.path.exists(os.path.join(BASE_DIR, 'anthropic_config.json')) else []),
     ],
     hiddenimports=[
         'pandas',
@@ -35,6 +37,9 @@ a = Analysis(
         'packaging.version',
         'urllib.request',
         'urllib.error',
+        'anthropic',
+        'httpx',
+        'anyio',
     ],
     hookspath=[],
     hooksconfig={},
