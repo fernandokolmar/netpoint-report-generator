@@ -353,12 +353,20 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
     if rlabels and rvalues:
         # Índice do pico para destacar visualmente no gráfico
         pico_idx = rvalues.index(max(rvalues)) if rvalues else 0
+        # Ponto do pico: sempre visível, laranja, maior
+        # Demais pontos: invisíveis em repouso, aparecem discretos (branco) ao hover
         point_radii = [0] * len(rvalues)
         point_radii[pico_idx] = 7
-        point_colors = ['rgba(0,0,0,0)'] * len(rvalues)
+        point_hover_radii = [4] * len(rvalues)
+        point_hover_radii[pico_idx] = 8
+        point_colors = ['rgba(255,255,255,0)'] * len(rvalues)
         point_colors[pico_idx] = '#f39c12'
+        point_hover_colors = ['rgba(255,255,255,0.9)'] * len(rvalues)
+        point_hover_colors[pico_idx] = '#f39c12'
         point_border_colors = ['rgba(0,0,0,0)'] * len(rvalues)
         point_border_colors[pico_idx] = '#ffffff'
+        point_hover_border_colors = ['#7b4ff5'] * len(rvalues)
+        point_hover_border_colors[pico_idx] = '#ffffff'
         pico_label = rlabels[pico_idx] if pico_idx < len(rlabels) else ''
         script_lines.append(
             f"new Chart(document.getElementById('chartRetencao'), {{"
@@ -369,9 +377,13 @@ def render_html(metrics: Dict[str, Any], insights: List[Dict] = None) -> str:
             f"borderColor:'#7b4ff5',backgroundColor:'rgba(123,79,245,0.08)',"
             f"tension:0.4,fill:true,"
             f"pointRadius:{json.dumps(point_radii)},"
+            f"pointHoverRadius:{json.dumps(point_hover_radii)},"
             f"pointBackgroundColor:{json.dumps(point_colors)},"
+            f"pointHoverBackgroundColor:{json.dumps(point_hover_colors)},"
             f"pointBorderColor:{json.dumps(point_border_colors)},"
+            f"pointHoverBorderColor:{json.dumps(point_hover_border_colors)},"
             f"pointBorderWidth:2,"
+            f"pointHoverBorderWidth:2,"
             f"borderWidth:2.5}}]"
             f"}},"
             f"options:{{responsive:true,maintainAspectRatio:false,"
