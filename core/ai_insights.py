@@ -1,26 +1,108 @@
-"""Generates AI-powered insights via Anthropic Claude API."""
+"""Generates AI-powered insights via configurable AI provider (.env)."""
 
 import json
 import pathlib
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 
-def _config_path() -> pathlib.Path:
-    # PyInstaller: sys._MEIPASS contém o diretório do executável extraído
+def _project_root() -> pathlib.Path:
     if getattr(sys, "frozen", False):
-        base = pathlib.Path(sys._MEIPASS)
-    else:
-        base = pathlib.Path(__file__).parent.parent
-    return base / "anthropic_config.json"
+        return pathlib.Path(sys._MEIPASS)
+    return pathlib.Path(__file__).parent.parent
+
+
+def _load_env() -> Dict[str, str]:
+    """Lê o arquivo .env da raiz do projeto. Ignora linhas de comentário."""
+    env_path = _project_root() / ".env"
+    values = {}
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, val = line.partition("=")
+                values[key.strip()] = val.strip()
+    return values
+
+
+def load_ai_config() -> Dict[str, str]:
+    """
+    Retorna as configurações da IA lidas do .env.
+    Fallback para anthropic_config.json legado se .env não existir.
+    """
+    env = _load_env()
+
+    api_key  = env.get("AI_API_KEY", "")
+    base_url = env.get("AI_BASE_URL", "https://api.anthropic.com")
+    model    = env.get("AI_MODEL",    "claude-sonnet-4-6")
+    provider = env.get("AI_PROVIDER", "anthropic").lower()
+
+    # Fallback para anthropic_config.json legado
+    if not api_key:
+        legacy = _project_root() / "anthropic_config.json"
+        if legacy.exists():
+            with open(legacy, "r", encoding="utf-8") as f:
+                api_key = json.load(f).get("api_key", "").strip()
+            provider = "anthropic"
+            base_url = "https://api.anthropic.com"
+            model    = "claude-sonnet-4-6"
+
+    return {
+        "api_key":  api_key,
+        "base_url": base_url,
+        "model":    model,
+        "provider": provider,
+    }
 
 
 def load_api_key() -> str:
-    path = _config_path()
-    if path.exists():
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f).get("api_key", "").strip()
-    return ""
+    """Compatibilidade com código existente — retorna apenas a api_key."""
+    return load_ai_config().get("api_key", "")
+
+
+def _call_ai(prompt: str, config: Dict[str, str], max_tokens: int) -> str:
+    """
+    Chama a API conforme o provider configurado.
+    - anthropic: usa o SDK oficial da Anthropic
+    - openai:    usa o SDK OpenAI com base_url customizável (Groq, OpenRouter, etc.)
+    Retorna o texto da resposta.
+    """
+    provider = config.get("provider", "anthropic")
+    api_key  = config["api_key"]
+    model    = config["model"]
+    base_url = config["base_url"]
+
+    if provider == "anthropic":
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
+        message = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return message.content[0].text.strip()
+
+    else:
+        # Compatível com OpenAI, Groq, OpenRouter e qualquer API OpenAI-like
+        import openai
+        client = openai.OpenAI(api_key=api_key, base_url=base_url)
+        response = client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content.strip()
+
+
+def _parse_json(raw: str) -> Any:
+    """Remove blocos ```json``` e faz parse do JSON."""
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
 
 
 def _montar_resumo(metrics: Dict[str, Any]) -> str:
@@ -86,7 +168,9 @@ def regerar_insight(
     Regera apenas um insight com base em uma instrução do usuário.
     Retorna um único dict {icon, title, body}.
     """
-    import anthropic
+    config = load_ai_config()
+    if api_key:
+        config["api_key"] = api_key
 
     resumo = _montar_resumo(metrics)
     insight_json = json.dumps(insight_atual, ensure_ascii=False)
@@ -115,29 +199,18 @@ Regras:
 - Linguagem profissional em português brasileiro
 """
 
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    raw = message.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
-
-    return json.loads(raw)
+    raw = _call_ai(prompt, config, max_tokens=512)
+    return _parse_json(raw)
 
 
 def gerar_insights_claude(metrics: Dict[str, Any], api_key: str) -> List[Dict]:
     """
-    Envia resumo agregado ao Claude e retorna lista de insights.
+    Envia resumo agregado à IA configurada e retorna lista de insights.
     Retorna lista de dicts: [{icon, title, body}, ...]
     """
-    import anthropic
+    config = load_ai_config()
+    if api_key:
+        config["api_key"] = api_key
 
     resumo = _montar_resumo(metrics)
 
@@ -163,19 +236,6 @@ Regras:
 - Foque em aspectos acionáveis e relevantes para o organizador do evento
 """
 
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    raw = message.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
-
-    insights = json.loads(raw)
+    raw = _call_ai(prompt, config, max_tokens=1024)
+    insights = _parse_json(raw)
     return insights[:6]
